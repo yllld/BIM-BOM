@@ -2,39 +2,80 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="DWG Converter - процесс"
-        Width="460"
-        Height="260"
+        Width="560"
+        Height="300"
+        MinWidth="520"
+        MinHeight="280"
         ResizeMode="NoResize"
-        Background="#F7F4FF"
+        Background="#F7F6FA"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
-        <SolidColorBrush x:Key="AccentBrush" Color="#8C30FF" />
-        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="LineBrush" Color="#DED0F8" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#665E73" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="DwgConverterTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="16" Margin="14">
-        <StackPanel>
-            <TextBlock x:Name="CurrentStatusText"
-                       Text="Подготовка"
-                       Foreground="#25153D"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,14" />
+    <DockPanel Style="{StaticResource DwgRootDockStyle}">
+        <Border DockPanel.Dock="Top" Style="{StaticResource DwgTopBarStyle}" Padding="18,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="Phase0Text" Text="Предварительный анализ" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4" />
-            <ProgressBar x:Name="Phase0Bar" Height="8" Minimum="0" Maximum="100" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}" />
+                <Border Width="28"
+                        Height="28"
+                        CornerRadius="7"
+                        Background="#FFFFFF"
+                        Margin="0,0,10,0">
+                    <TextBlock Text="R"
+                               FontSize="15"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource DwgAccentBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Border>
 
-            <TextBlock x:Name="Phase1Text" Text="Извлечение геометрии" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4" />
-            <ProgressBar x:Name="Phase1Bar" Height="8" Minimum="0" Maximum="100" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="DWG Converter" Style="{StaticResource DwgHeaderTitleTextStyle}" FontSize="16" LineHeight="20" />
+                    <TextBlock Text="Преобразование геометрии" Style="{StaticResource DwgHeaderSubtitleTextStyle}" Margin="0,1,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
 
-            <TextBlock x:Name="Phase2Text" Text="Создание геометрии и отчетов" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4" />
-            <ProgressBar x:Name="Phase2Bar" Height="8" Minimum="0" Maximum="100" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}" />
+        <Grid Margin="16">
+            <Border Style="{StaticResource DwgCardStyle}">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="CurrentStatusText"
+                               Text="Готовим конвертацию..."
+                               Style="{StaticResource DwgStatusTitleTextStyle}"
+                               Margin="0,0,0,8" />
 
-            <TextBlock x:Name="Phase3Text" Text="Открытие отчета" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4" />
-            <ProgressBar x:Name="Phase3Bar" Height="8" Minimum="0" Maximum="100" Foreground="{StaticResource AccentBrush}" />
-        </StackPanel>
-    </Border>
+                    <TextBlock x:Name="SecondaryStatusText"
+                               Text="Собираем входные данные и держим допуски под рукой."
+                               Style="{StaticResource DwgMutedTextStyle}"
+                               TextAlignment="Center"
+                               Margin="0,0,0,22" />
+
+                    <Grid Margin="2,0,2,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="StageText" Text="Этап 0 из 4" Style="{StaticResource DwgSmallMutedTextStyle}" />
+                        <TextBlock Grid.Column="1" x:Name="ProgressPercentText" Text="0%" Foreground="{StaticResource DwgAccentBrush}" FontWeight="SemiBold" />
+                    </Grid>
+
+                    <ProgressBar x:Name="OverallProgressBar" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
 </Window>

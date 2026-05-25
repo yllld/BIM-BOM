@@ -10,7 +10,7 @@ namespace FamilyConverter.Revit2021.UI
         {
             InitializeComponent();
             SummaryText.Text = string.Format(
-                "Успешно создано Extrusion: {0}    Создано FreeFormElement: {1}    Пропущено: {2}    Ошибки: {3}    Предупреждения: {4}",
+                "Extrusion: {0} • FreeFormElement: {1} • Пропущено: {2} • Ошибки: {3} • Предупреждения: {4}",
                 summary.ExtrusionCount,
                 summary.FreeFormCount,
                 summary.SkippedCount,

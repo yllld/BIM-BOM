@@ -108,6 +108,7 @@
     <Compile Include="UI\ProgressWindow.xaml.cs">
       <DependentUpon>ProgressWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UI\ProgressStatusTextProvider.cs" />
     <Compile Include="UI\RibbonIcon.cs" />
     <Compile Include="UI\ReportWindow.xaml.cs">
       <DependentUpon>ReportWindow.xaml</DependentUpon>
@@ -127,6 +128,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="UI\ConversionSettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\DwgConverterTheme.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

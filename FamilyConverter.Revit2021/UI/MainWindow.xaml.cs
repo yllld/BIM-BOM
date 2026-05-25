@@ -66,13 +66,13 @@ namespace FamilyConverter.Revit2021.UI
         private void UpdateSummaries()
         {
             ModeSummaryText.Text = string.Format(
-                "Extrusion: {0} · FreeForm fallback: {1} · Подкатегории: {2}",
+                "Extrusion: {0} • FreeForm fallback: {1} • Подкатегории: {2}",
                 OnOff(Options.CreateNativeExtrusions),
                 OnOff(Options.UseFreeFormFallback),
                 OnOff(Options.CreateSubcategoriesByLayer));
 
             ToleranceSummaryText.Text = string.Format(
-                "Минимальный Solid: {0:0.###} мм3 · Габариты: {1:0.###} мм · Объем: {2:0.###}% · Контур: {3:0.###} мм · Уверенность: {4:0.##}",
+                "Минимальный Solid: {0:0.###} мм³ • Габариты: {1:0.###} мм • Объем: {2:0.###}% • Контур: {3:0.###} мм • Уверенность: {4:0.##}",
                 Options.MinSolidVolumeMm3,
                 Options.BoundingBoxToleranceMm,
                 Options.VolumeTolerancePercent,
@@ -80,11 +80,11 @@ namespace FamilyConverter.Revit2021.UI
                 Options.MinExtrusionConfidence);
 
             AiSummaryText.Text = Options.UseAiAdvisor
-                ? "AI: включен · " + Options.AiConfigPath
+                ? "AI: включен • " + Options.AiConfigPath
                 : "AI: выключен";
 
             ReportSummaryText.Text = string.Format(
-                "Отчеты: JSON {0}, CSV {1} · Удаление DWG: {2}",
+                "Отчеты: JSON {0}, CSV {1} • Удаление DWG: {2}",
                 OnOff(Options.CreateJsonReport),
                 OnOff(Options.CreateCsvReport),
                 OnOff(Options.DeleteSourceDwgOnSuccess));
@@ -95,8 +95,8 @@ namespace FamilyConverter.Revit2021.UI
             return new Image
             {
                 Source = source,
-                Width = 28,
-                Height = 28,
+                Width = 22,
+                Height = 22,
                 Stretch = System.Windows.Media.Stretch.Uniform
             };
         }
