@@ -1,59 +1,35 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace FamilyConverter.Revit2021.UI
 {
+    public enum RibbonIconKind
+    {
+        SimpleConvert,
+        TurboFreeForm,
+        ReportsFolder,
+        Donate,
+        Support
+    }
+
     public static class RibbonIcon
     {
-        private static readonly Color AccentColor = Color.FromRgb(0x8C, 0x30, 0xFF);
-
-        public static ImageSource Create(int size)
+        public static ImageSource Create(RibbonIconKind kind, int size)
         {
-            double scale = size / 32.0;
-            var brush = new SolidColorBrush(AccentColor);
-            brush.Freeze();
-
-            var pen = new Pen(brush, 2.4 * scale)
-            {
-                StartLineCap = PenLineCap.Round,
-                EndLineCap = PenLineCap.Round,
-                LineJoin = PenLineJoin.Round
-            };
-            pen.Freeze();
-
-            var thinPen = new Pen(brush, 1.8 * scale)
-            {
-                StartLineCap = PenLineCap.Round,
-                EndLineCap = PenLineCap.Round,
-                LineJoin = PenLineJoin.Round
-            };
-            thinPen.Freeze();
+            BitmapImage source = LoadSource(GetFileName(kind));
+            double padding = size >= 32 ? 1.5 : 1.0;
+            double target = size - padding * 2;
 
             var visual = new DrawingVisual();
             using (DrawingContext context = visual.RenderOpen())
             {
                 context.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, size, size));
-
-                Point p1 = Scale(8, 11, scale);
-                Point p2 = Scale(16, 7, scale);
-                Point p3 = Scale(24, 11, scale);
-                Point p4 = Scale(24, 21, scale);
-                Point p5 = Scale(16, 25, scale);
-                Point p6 = Scale(8, 21, scale);
-
-                context.DrawLine(pen, p1, p2);
-                context.DrawLine(pen, p2, p3);
-                context.DrawLine(pen, p3, p4);
-                context.DrawLine(pen, p4, p5);
-                context.DrawLine(pen, p5, p6);
-                context.DrawLine(pen, p6, p1);
-
-                context.DrawLine(thinPen, p1, Scale(16, 15, scale));
-                context.DrawLine(thinPen, p3, Scale(16, 15, scale));
-                context.DrawLine(thinPen, Scale(16, 15, scale), p5);
-
-                context.DrawEllipse(null, thinPen, Scale(16, 16, scale), 14 * scale, 14 * scale);
+                context.DrawImage(source, new Rect(padding, padding, target, target));
             }
 
             var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
@@ -62,9 +38,52 @@ namespace FamilyConverter.Revit2021.UI
             return bitmap;
         }
 
-        private static Point Scale(double x, double y, double scale)
+        private static string GetFileName(RibbonIconKind kind)
         {
-            return new Point(x * scale, y * scale);
+            switch (kind)
+            {
+                case RibbonIconKind.SimpleConvert:
+                    return "simple-convert.png";
+                case RibbonIconKind.TurboFreeForm:
+                    return "turbo-freeform.png";
+                case RibbonIconKind.ReportsFolder:
+                    return "reports-folder.png";
+                case RibbonIconKind.Donate:
+                    return "donate.png";
+                case RibbonIconKind.Support:
+                    return "support.png";
+                default:
+                    throw new ArgumentOutOfRangeException("kind");
+            }
+        }
+
+        private static BitmapImage LoadSource(string fileName)
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            string resourceName = assembly
+                .GetManifestResourceNames()
+                .FirstOrDefault(x => x.EndsWith(".Assets.Ribbon." + fileName, StringComparison.OrdinalIgnoreCase));
+
+            if (string.IsNullOrWhiteSpace(resourceName))
+            {
+                throw new InvalidOperationException("Ribbon icon resource was not found: " + fileName);
+            }
+
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    throw new InvalidOperationException("Ribbon icon resource could not be opened: " + fileName);
+                }
+
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.StreamSource = stream;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
         }
     }
 }

@@ -59,7 +59,10 @@
   <ItemGroup>
     <Compile Include="App.cs" />
     <Compile Include="Command.cs" />
+    <Compile Include="DonateCommand.cs" />
+    <Compile Include="OpenReportsFolderCommand.cs" />
     <Compile Include="ProductInfo.cs" />
+    <Compile Include="SupportCommand.cs" />
     <Compile Include="TurboCommand.cs" />
     <Compile Include="Models\AiConfig.cs" />
     <Compile Include="Models\AiGeometryRequest.cs" />
@@ -143,6 +146,13 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Ribbon\donate.png" />
+    <EmbeddedResource Include="Assets\Ribbon\reports-folder.png" />
+    <EmbeddedResource Include="Assets\Ribbon\simple-convert.png" />
+    <EmbeddedResource Include="Assets\Ribbon\support.png" />
+    <EmbeddedResource Include="Assets\Ribbon\turbo-freeform.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="FamilyConverter.addin">
