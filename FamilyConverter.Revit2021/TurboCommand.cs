@@ -4,6 +4,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using FamilyConverter.Revit2021.Models;
 using FamilyConverter.Revit2021.Services;
+using FamilyConverter.Revit2021.UI;
 
 namespace FamilyConverter.Revit2021
 {
@@ -29,28 +30,20 @@ namespace FamilyConverter.Revit2021
                     return Result.Cancelled;
                 }
 
-                TaskDialog dialog = new TaskDialog("Family Converter Turbo");
-                dialog.MainInstruction = "Super Turbo FreeForm";
-                dialog.MainContent =
-                    "Режим для очень тяжелых DWG.\n\n" +
-                    "- без предпросмотра;\n" +
-                    "- без Extrusion и AI;\n" +
-                    "- без анализа Curve/Mesh;\n" +
-                    "- Solid сразу создаются как FreeFormElement;\n" +
-                    "- проверка созданной геометрии отключена для скорости.\n\n" +
-                    "Revit может не отвечать во время операции. Дождитесь завершения.";
-                dialog.CommonButtons = TaskDialogCommonButtons.Ok | TaskDialogCommonButtons.Cancel;
-                dialog.DefaultButton = TaskDialogResult.Ok;
-
-                if (dialog.Show() != TaskDialogResult.Ok)
+                Document doc = uidoc.Document;
+                ConversionOptions options = ConversionOptions.CreateSuperTurboDefaults();
+                var settingsWindow = new TurboSettingsWindow(options);
+                new System.Windows.Interop.WindowInteropHelper(settingsWindow).Owner = uiapp.MainWindowHandle;
+                if (settingsWindow.ShowDialog() != true)
                 {
                     return Result.Cancelled;
                 }
 
-                Document doc = uidoc.Document;
-                ConversionOptions options = ConversionOptions.CreateSuperTurboDefaults();
+                options = settingsWindow.Options;
                 var extraction = new GeometryExtractionService(new LayerService(), new UnitService());
-                logger.Info("Super Turbo extraction started. ImportInstanceId: " + importInstance.Id.IntegerValue);
+                logger.Info("Super Turbo extraction started. ImportInstanceId: " + importInstance.Id.IntegerValue
+                    + ", MinVolumeMm3: " + options.MinSolidVolumeMm3
+                    + ", MinMaxDimensionMm: " + options.MinSolidMaxDimensionMm);
 
                 var geometryObjects = extraction.Extract(doc, importInstance, options);
                 logger.Info("Super Turbo solids collected: " + geometryObjects.Count);
@@ -66,7 +59,7 @@ namespace FamilyConverter.Revit2021
 
                 ConversionSummary summary = conversionService.Convert(uiapp, importInstance, geometryObjects, options);
 
-                TaskDialog.Show("Family Converter Turbo", BuildSummary(summary));
+                TaskDialog.Show("Family Converter Turbo", BuildSummary(summary, geometryObjects.Count, options));
                 return Result.Succeeded;
             }
             catch (Exception ex)
@@ -78,14 +71,17 @@ namespace FamilyConverter.Revit2021
             }
         }
 
-        private static string BuildSummary(ConversionSummary summary)
+        private static string BuildSummary(ConversionSummary summary, int collectedSolidCount, ConversionOptions options)
         {
             return string.Format(
-                "Super Turbo завершен.\n\nFreeFormElement: {0}\nПропущено: {1}\nОшибки: {2}\nПредупреждения: {3}\n\nJSON: {4}\nCSV: {5}",
+                "Super Turbo завершен.\n\nПередано на FreeForm: {0}\nFreeFormElement: {1}\nПропущено: {2}\nОшибки: {3}\nПредупреждения: {4}\n\nПорог объема: {5:0.###} мм3\nПорог габарита: {6:0.###} мм\n\nJSON: {7}\nCSV: {8}",
+                collectedSolidCount,
                 summary.FreeFormCount,
                 summary.SkippedCount,
                 summary.FailedCount,
                 summary.WarningCount,
+                options.MinSolidVolumeMm3,
+                options.MinSolidMaxDimensionMm,
                 string.IsNullOrWhiteSpace(summary.JsonReportPath) ? "-" : summary.JsonReportPath,
                 string.IsNullOrWhiteSpace(summary.CsvReportPath) ? "-" : summary.CsvReportPath);
         }

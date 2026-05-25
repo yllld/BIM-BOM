@@ -19,6 +19,7 @@ namespace FamilyConverter.Revit2021.Models
         public bool UseAiAdvisor { get; set; }
         public string AiConfigPath { get; set; }
         public double MinSolidVolumeMm3 { get; set; }
+        public double MinSolidMaxDimensionMm { get; set; }
         public double BoundingBoxToleranceMm { get; set; }
         public double VolumeTolerancePercent { get; set; }
         public double LoopClosureToleranceMm { get; set; }
@@ -43,6 +44,7 @@ namespace FamilyConverter.Revit2021.Models
                 UseAiAdvisor = false,
                 AiConfigPath = Path.Combine(appData, "ENECA_MEP", "FamilyConverter", "ai_config.json"),
                 MinSolidVolumeMm3 = 1.0,
+                MinSolidMaxDimensionMm = 0.0,
                 BoundingBoxToleranceMm = 2.0,
                 VolumeTolerancePercent = 2.0,
                 LoopClosureToleranceMm = 0.5,
@@ -65,7 +67,8 @@ namespace FamilyConverter.Revit2021.Models
             options.CreateJsonReport = true;
             options.CreateCsvReport = true;
             options.UseAiAdvisor = false;
-            options.MinSolidVolumeMm3 = 1000.0;
+            options.MinSolidVolumeMm3 = 50000.0;
+            options.MinSolidMaxDimensionMm = 25.0;
             options.BoundingBoxToleranceMm = 50.0;
             options.VolumeTolerancePercent = 25.0;
             options.LoopClosureToleranceMm = 5.0;

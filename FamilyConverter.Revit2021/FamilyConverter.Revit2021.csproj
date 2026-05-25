@@ -98,6 +98,9 @@
     <Compile Include="UI\ReportWindow.xaml.cs">
       <DependentUpon>ReportWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UI\TurboSettingsWindow.xaml.cs">
+      <DependentUpon>TurboSettingsWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Utils\CurveLoopUtils.cs" />
     <Compile Include="Utils\FileNameUtils.cs" />
     <Compile Include="Utils\GeometryUtils.cs" />
@@ -110,6 +113,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="UI\ReportWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\TurboSettingsWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

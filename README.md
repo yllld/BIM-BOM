@@ -64,26 +64,35 @@ C:\Program Files\Autodesk\Revit 2021\
 
 ## Super Turbo FreeForm
 
-For very heavy imported DWG files, use:
+Для очень тяжелых импортированных DWG используйте:
 
 ```text
 ENECA_MEP -> DWG Converter -> Turbo FreeForm
 ```
 
-This mode is intentionally rough and fast:
+Режим намеренно грубее обычного, но быстрее:
 
-- no geometry preview window;
-- no Extrusion attempts;
-- no AI;
-- no Mesh/Curve diagnostics;
-- no created-geometry validation pass;
-- no DWG layer lookup;
-- Solids are converted directly to `FreeFormElement`;
-- reports are still created.
+- без окна предварительного анализа всей геометрии;
+- без попыток `Extrusion`;
+- без AI;
+- без диагностики `Mesh`/`Curve`;
+- без чтения слоев DWG;
+- `Solid` создаются сразу как `FreeFormElement`;
+- отчеты JSON/CSV можно оставить включенными.
 
-This mode is useful when Revit becomes unresponsive on large DWG imports. Revit
-may still show `Not responding` while the Revit API is processing geometry; wait
-for the operation to finish.
+Перед запуском Turbo открывается окно настроек. Главные пороги для упрощения
+семейства:
+
+- `Минимальный объем Solid, мм³` - Solid с меньшим объемом не создается.
+- `Минимальный максимальный габарит, мм` - Solid, у которого самый большой
+  размер меньше порога, не создается.
+- значение `0` отключает соответствующий порог.
+
+Проверку созданной геометрии по допускам габаритов/объема можно включить в этом
+же окне, но по умолчанию она выключена для скорости.
+
+Этот режим полезен, когда Revit зависает на больших DWG. Во время работы Revit
+может показывать `Не отвечает`; дождитесь завершения операции.
 
 ## AI-конфиг
 

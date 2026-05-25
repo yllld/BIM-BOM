@@ -154,15 +154,30 @@ namespace FamilyConverter.Revit2021.Services
             IList<GeometryObjectInfo> result,
             ref int index)
         {
-            double minVolume = _unitService.CubicMmToCubicFeet(options.MinSolidVolumeMm3);
-            if (solid.Faces.Size == 0 || solid.Volume <= minVolume)
+            if (solid.Faces.Size == 0)
             {
                 return;
             }
 
             var warnings = new List<string>();
             Solid transformedSolid = GeometryUtils.TryCreateTransformedSolid(solid, transform, warnings);
+            if (transformedSolid == null || transformedSolid.Faces.Size == 0)
+            {
+                return;
+            }
+
             double volumeFeet3 = Math.Max(0, transformedSolid.Volume);
+            double minVolume = _unitService.CubicMmToCubicFeet(Math.Max(0, options.MinSolidVolumeMm3));
+            if (volumeFeet3 <= minVolume)
+            {
+                return;
+            }
+
+            BoundingBoxXYZ boundingBox = GeometryUtils.GetSolidBoundingBox(transformedSolid);
+            if (ShouldSkipByBoundingBox(boundingBox, options))
+            {
+                return;
+            }
 
             var info = new GeometryObjectInfo
             {
@@ -172,7 +187,7 @@ namespace FamilyConverter.Revit2021.Services
                 Transform = transform,
                 Solid = transformedSolid,
                 RawObject = rawObject,
-                BoundingBox = GeometryUtils.GetSolidBoundingBox(transformedSolid),
+                BoundingBox = boundingBox,
                 VolumeFeet3 = volumeFeet3,
                 VolumeMm3 = _unitService.CubicFeetToCubicMm(volumeFeet3),
                 FaceCount = transformedSolid.Faces.Size,
@@ -186,6 +201,20 @@ namespace FamilyConverter.Revit2021.Services
             }
 
             result.Add(info);
+        }
+
+        private bool ShouldSkipByBoundingBox(BoundingBoxXYZ boundingBox, ConversionOptions options)
+        {
+            if (boundingBox == null || options.MinSolidMaxDimensionMm <= 0)
+            {
+                return false;
+            }
+
+            double dx = Math.Abs(boundingBox.Max.X - boundingBox.Min.X);
+            double dy = Math.Abs(boundingBox.Max.Y - boundingBox.Min.Y);
+            double dz = Math.Abs(boundingBox.Max.Z - boundingBox.Min.Z);
+            double maxDimensionMm = _unitService.FeetToMm(Math.Max(dx, Math.Max(dy, dz)));
+            return maxDimensionMm < options.MinSolidMaxDimensionMm;
         }
 
         private void AddMesh(
