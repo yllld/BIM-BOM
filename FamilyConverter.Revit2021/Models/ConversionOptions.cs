@@ -8,6 +8,10 @@ namespace FamilyConverter.Revit2021.Models
         public bool CreateNativeExtrusions { get; set; }
         public bool TryExtrusionBeforeFreeForm { get; set; }
         public bool UseFreeFormFallback { get; set; }
+        public bool SuperTurboMode { get; set; }
+        public bool CollectUnsupportedGeometry { get; set; }
+        public bool ReadLayerNames { get; set; }
+        public bool ValidateCreatedGeometry { get; set; }
         public bool DeleteSourceDwgOnSuccess { get; set; }
         public bool CreateSubcategoriesByLayer { get; set; }
         public bool CreateJsonReport { get; set; }
@@ -28,6 +32,10 @@ namespace FamilyConverter.Revit2021.Models
                 CreateNativeExtrusions = true,
                 TryExtrusionBeforeFreeForm = true,
                 UseFreeFormFallback = true,
+                SuperTurboMode = false,
+                CollectUnsupportedGeometry = true,
+                ReadLayerNames = true,
+                ValidateCreatedGeometry = true,
                 DeleteSourceDwgOnSuccess = false,
                 CreateSubcategoriesByLayer = true,
                 CreateJsonReport = true,
@@ -40,6 +48,29 @@ namespace FamilyConverter.Revit2021.Models
                 LoopClosureToleranceMm = 0.5,
                 MinExtrusionConfidence = 0.85
             };
+        }
+
+        public static ConversionOptions CreateSuperTurboDefaults()
+        {
+            ConversionOptions options = CreateDefaults();
+            options.CreateNativeExtrusions = false;
+            options.TryExtrusionBeforeFreeForm = false;
+            options.UseFreeFormFallback = true;
+            options.SuperTurboMode = true;
+            options.CollectUnsupportedGeometry = false;
+            options.ReadLayerNames = false;
+            options.ValidateCreatedGeometry = false;
+            options.DeleteSourceDwgOnSuccess = false;
+            options.CreateSubcategoriesByLayer = false;
+            options.CreateJsonReport = true;
+            options.CreateCsvReport = true;
+            options.UseAiAdvisor = false;
+            options.MinSolidVolumeMm3 = 1000.0;
+            options.BoundingBoxToleranceMm = 50.0;
+            options.VolumeTolerancePercent = 25.0;
+            options.LoopClosureToleranceMm = 5.0;
+            options.MinExtrusionConfidence = 1.0;
+            return options;
         }
     }
 }

@@ -37,6 +37,19 @@ namespace FamilyConverter.Revit2021
                     button.ToolTip = "Преобразовать выбранный импортированный 3D DWG в геометрию семейства Revit.";
                     SetButtonImage(button);
                 }
+
+                var turboButtonData = new PushButtonData(
+                    "FamilyConverterTurboCommand",
+                    "Turbo\nFreeForm",
+                    assemblyPath,
+                    typeof(TurboCommand).FullName);
+
+                PushButton turboButton = panel.AddItem(turboButtonData) as PushButton;
+                if (turboButton != null)
+                {
+                    turboButton.ToolTip = "Сверхбыстрый режим для тяжелых DWG: Solid сразу создаются как FreeFormElement без предпросмотра и Extrusion.";
+                    SetButtonImage(turboButton);
+                }
             }
             catch (Exception ex)
             {

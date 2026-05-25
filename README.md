@@ -62,6 +62,29 @@ C:\Program Files\Autodesk\Revit 2021\
 7. Нажмите `Преобразовать`.
 8. Проверьте созданные формы и отчет.
 
+## Super Turbo FreeForm
+
+For very heavy imported DWG files, use:
+
+```text
+ENECA_MEP -> DWG Converter -> Turbo FreeForm
+```
+
+This mode is intentionally rough and fast:
+
+- no geometry preview window;
+- no Extrusion attempts;
+- no AI;
+- no Mesh/Curve diagnostics;
+- no created-geometry validation pass;
+- no DWG layer lookup;
+- Solids are converted directly to `FreeFormElement`;
+- reports are still created.
+
+This mode is useful when Revit becomes unresponsive on large DWG imports. Revit
+may still show `Not responding` while the Revit API is processing geometry; wait
+for the operation to finish.
+
 ## AI-конфиг
 
 AI-советник отключен по умолчанию. Плагин полноценно работает локально без AI.

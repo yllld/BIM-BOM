@@ -76,7 +76,14 @@ namespace FamilyConverter.Revit2021.Services
                     {
                         if (info.Solid != null)
                         {
-                            ProcessSolid(document, info, options, aiAdvisor, aiConfig, result);
+                            if (options.SuperTurboMode)
+                            {
+                                ProcessSolidSuperTurbo(document, info, options, result);
+                            }
+                            else
+                            {
+                                ProcessSolid(document, info, options, aiAdvisor, aiConfig, result);
+                            }
                         }
                         else if (info.Mesh != null)
                         {
@@ -217,6 +224,16 @@ namespace FamilyConverter.Revit2021.Services
             result.FinalMethod = ConversionMethod.Skip;
             result.Status = ConversionStatus.Skipped;
             result.Message = "Solid пропущен: профиль не признан безопасным, FreeForm fallback выключен или рекомендация требует Skip.";
+        }
+
+        private void ProcessSolidSuperTurbo(Document document, GeometryObjectInfo info, ConversionOptions options, ConversionResult result)
+        {
+            result.LocalClassification = GeometryClassification.Complex;
+            result.LocalConfidence = 0;
+            result.FinalMethod = ConversionMethod.FreeForm;
+            result.FallbackUsed = true;
+            result.ExtrusionFailedReason = "Super Turbo: Extrusion and geometry analysis skipped. Solid is converted directly to FreeFormElement.";
+            TryCreateFreeForm(document, info, options, result);
         }
 
         private static ConversionMethod DecideMethod(PrismaticCandidate candidate, ConversionOptions options, AiGeometryResponse aiResponse)
@@ -418,6 +435,14 @@ namespace FamilyConverter.Revit2021.Services
             result.CreatedElementId = element == null ? null : element.Id;
             result.Message = successMessage;
             result.Exception = null;
+
+            if (!options.ValidateCreatedGeometry)
+            {
+                result.ValidationBoundingBoxDeviationMm = 0;
+                result.ValidationVolumeDeviationPercent = 0;
+                result.Status = element == null ? ConversionStatus.Failed : ConversionStatus.Success;
+                return;
+            }
 
             BoundingBoxXYZ createdBox = element == null ? null : element.get_BoundingBox(null);
             double createdVolume = GeometryUtils.GetElementSolidVolume(element);

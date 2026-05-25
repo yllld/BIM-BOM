@@ -27,9 +27,9 @@ namespace FamilyConverter.Revit2021.Services
 
             var geometryOptions = new Options
             {
-                ComputeReferences = true,
+                ComputeReferences = !options.SuperTurboMode,
                 IncludeNonVisibleObjects = false,
-                DetailLevel = ViewDetailLevel.Fine
+                DetailLevel = options.SuperTurboMode ? ViewDetailLevel.Coarse : ViewDetailLevel.Fine
             };
 
             GeometryElement geometry = importInstance.get_Geometry(geometryOptions);
@@ -85,18 +85,27 @@ namespace FamilyConverter.Revit2021.Services
                 Mesh mesh = obj as Mesh;
                 if (mesh != null)
                 {
-                    AddMesh(document, sourceId, mesh, obj, currentTransform, result, ref index);
+                    if (options.CollectUnsupportedGeometry)
+                    {
+                        AddMesh(document, sourceId, mesh, obj, currentTransform, result, ref index);
+                    }
                     continue;
                 }
 
                 Curve curve = obj as Curve;
                 if (curve != null)
                 {
-                    AddCurve(document, sourceId, curve, obj, currentTransform, result, ref index);
+                    if (options.CollectUnsupportedGeometry)
+                    {
+                        AddCurve(document, sourceId, curve, obj, currentTransform, result, ref index);
+                    }
                     continue;
                 }
 
-                AddUnknown(document, sourceId, obj, currentTransform, result, ref index);
+                if (options.CollectUnsupportedGeometry)
+                {
+                    AddUnknown(document, sourceId, obj, currentTransform, result, ref index);
+                }
             }
         }
 
@@ -168,7 +177,7 @@ namespace FamilyConverter.Revit2021.Services
                 VolumeMm3 = _unitService.CubicFeetToCubicMm(volumeFeet3),
                 FaceCount = transformedSolid.Faces.Size,
                 EdgeCount = transformedSolid.Edges.Size,
-                LayerName = _layerService.GetLayerName(document, rawObject)
+                LayerName = options.ReadLayerNames ? _layerService.GetLayerName(document, rawObject) : "Turbo"
             };
 
             foreach (string warning in warnings)
