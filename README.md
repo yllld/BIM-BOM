@@ -113,3 +113,16 @@ CSV использует разделитель `;` для удобства в �
 ```
 
 API-ключи не логируются.
+
+## License
+
+MEP Converter is source-available, not open source.
+
+The public repository is licensed under the PolyForm Noncommercial License 1.0.0
+unless a separate written license is granted by the copyright holder.
+
+Commercial use, including use in paid BIM/design/engineering workflows,
+redistribution, resale, sublicensing, or use in a competing product, requires a
+separate written commercial or beta license.
+
+See [LICENSE.md](LICENSE.md).
