@@ -17,6 +17,7 @@ namespace FamilyConverter.Revit2021
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             var logger = new LoggingService();
+            ProgressWindow progressWindow = null;
 
             try
             {
@@ -36,7 +37,12 @@ namespace FamilyConverter.Revit2021
 
                 ConversionOptions defaults = ConversionOptions.CreateDefaults();
                 var extraction = new GeometryExtractionService(new LayerService(), new UnitService());
+                progressWindow = CreateProgressWindow(uiapp);
+                progressWindow.SetActive(0, "Анализируем выбранный DWG");
                 var previewObjects = extraction.Extract(doc, importInstance, defaults);
+                progressWindow.Complete(0);
+                progressWindow.Close();
+                progressWindow = null;
                 logger.Info("Предварительно найдено объектов геометрии: " + previewObjects.Count);
 
                 var mainWindow = new MainWindow(importInstance, previewObjects, defaults, new AiConfigService());
@@ -48,7 +54,11 @@ namespace FamilyConverter.Revit2021
                 }
 
                 ConversionOptions options = mainWindow.Options;
+                progressWindow = CreateProgressWindow(uiapp);
+                progressWindow.Complete(0);
+                progressWindow.SetActive(1, "Извлекаем геометрию с текущими настройками");
                 var geometryObjects = extraction.Extract(doc, importInstance, options);
+                progressWindow.Complete(1);
                 var conversionService = new ConversionService(
                     extraction,
                     new GeometryAnalysisService(new UnitService()),
@@ -58,7 +68,13 @@ namespace FamilyConverter.Revit2021
                     new AiConfigService(),
                     logger);
 
+                progressWindow.SetActive(2, "Создаем геометрию Revit и отчеты");
                 ConversionSummary summary = conversionService.Convert(uiapp, importInstance, geometryObjects, options);
+                progressWindow.Complete(2);
+                progressWindow.SetActive(3, "Открываем отчет");
+                progressWindow.Complete(3);
+                progressWindow.Close();
+                progressWindow = null;
                 logger.Info("Конвертация завершена. JSON: " + (summary.JsonReportPath ?? "-") + ", CSV: " + (summary.CsvReportPath ?? "-"));
 
                 var reportWindow = new ReportWindow(summary);
@@ -69,11 +85,24 @@ namespace FamilyConverter.Revit2021
             }
             catch (Exception ex)
             {
+                if (progressWindow != null)
+                {
+                    progressWindow.Close();
+                }
+
                 logger.Error("Критическая ошибка команды.", ex);
                 message = ex.Message;
                 TaskDialog.Show(ProductInfo.Name, "Команда завершилась с ошибкой:\n" + ex.Message);
                 return Result.Failed;
             }
+        }
+
+        private static ProgressWindow CreateProgressWindow(UIApplication uiapp)
+        {
+            var progressWindow = new ProgressWindow();
+            new System.Windows.Interop.WindowInteropHelper(progressWindow).Owner = uiapp.MainWindowHandle;
+            progressWindow.Show();
+            return progressWindow;
         }
     }
 }

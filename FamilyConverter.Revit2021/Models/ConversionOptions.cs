@@ -26,6 +26,11 @@ namespace FamilyConverter.Revit2021.Models
         public double LoopClosureToleranceMm { get; set; }
         public double MinExtrusionConfidence { get; set; }
 
+        public ConversionOptions Clone()
+        {
+            return (ConversionOptions)MemberwiseClone();
+        }
+
         public static ConversionOptions CreateDefaults()
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);

@@ -2,7 +2,7 @@
 
 DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
 
-Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `DWG Converter -> Family Geometry -> Simple Convert`.
+Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
 
 ## Ограничения MVP
 
@@ -83,17 +83,19 @@ DWGConverter-FamilyGeometry-Installer.exe /quiet
 2. Импортируйте 3D DWG стандартными средствами Revit.
 3. Переместите/поверните DWG как нужно.
 4. Выберите импортированный DWG-элемент.
-5. Запустите `DWG Converter -> Family Geometry -> Simple Convert`.
-6. Проверьте настройки преобразования.
+5. Запустите `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
+6. Проверьте профиль в основном окне. Настройки конвертации открываются через иконку шестеренки, AI-настройки - через иконку со звездой.
 7. Нажмите `Преобразовать`.
 8. Проверьте созданные формы и отчет.
+
+В обычном режиме длительные этапы показываются в отдельном небольшом окне прогресса.
 
 ## Turbo FreeForm
 
 Для очень тяжелых импортированных DWG используйте:
 
 ```text
-DWG Converter -> Family Geometry -> Turbo FreeForm
+BIM BOM -> DWG Converter - Family Geometry -> Turbo FreeForm
 ```
 
 Режим намеренно грубее обычного, но быстрее:

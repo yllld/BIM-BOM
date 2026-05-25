@@ -92,8 +92,18 @@
     <Compile Include="Services\SelectionService.cs" />
     <Compile Include="Services\SubcategoryService.cs" />
     <Compile Include="Services\UnitService.cs" />
+    <Compile Include="UI\AiSettingsWindow.xaml.cs">
+      <DependentUpon>AiSettingsWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\ConversionSettingsWindow.xaml.cs">
+      <DependentUpon>ConversionSettingsWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\EmbeddedIcons.cs" />
     <Compile Include="UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\ProgressWindow.xaml.cs">
+      <DependentUpon>ProgressWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\RibbonIcon.cs" />
     <Compile Include="UI\ReportWindow.xaml.cs">
@@ -109,7 +119,19 @@
     <Compile Include="Utils\ToleranceUtils.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="UI\AiSettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\ConversionSettingsWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="UI\MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\ProgressWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using Autodesk.Revit.DB;
 using FamilyConverter.Revit2021.Models;
 using FamilyConverter.Revit2021.Services;
-using Microsoft.Win32;
 
 namespace FamilyConverter.Revit2021.UI
 {
@@ -17,7 +17,10 @@ namespace FamilyConverter.Revit2021.UI
         {
             InitializeComponent();
             _aiConfigService = aiConfigService;
-            Options = defaults;
+            Options = defaults.Clone();
+
+            SettingsButton.Content = CreateIcon(EmbeddedIcons.CreateSettings());
+            AiButton.Content = CreateIcon(EmbeddedIcons.CreateAi());
 
             previewObjects = previewObjects ?? new List<GeometryObjectInfo>();
             ElementIdText.Text = importInstance.Id.IntegerValue.ToString(CultureInfo.InvariantCulture);
@@ -27,102 +30,80 @@ namespace FamilyConverter.Revit2021.UI
             CurveCountText.Text = previewObjects.Count(x => x.Curve != null).ToString(CultureInfo.InvariantCulture);
             LayersText.Text = new LayerService().JoinTopLayers(previewObjects.Select(x => x.LayerName), 12);
 
-            CreateExtrusionsCheckBox.IsChecked = defaults.CreateNativeExtrusions;
-            TryExtrusionBeforeFreeFormCheckBox.IsChecked = defaults.TryExtrusionBeforeFreeForm;
-            UseFreeFormCheckBox.IsChecked = defaults.UseFreeFormFallback;
-            DeleteSourceCheckBox.IsChecked = defaults.DeleteSourceDwgOnSuccess;
-            CreateSubcategoriesCheckBox.IsChecked = defaults.CreateSubcategoriesByLayer;
-            JsonReportCheckBox.IsChecked = defaults.CreateJsonReport;
-            CsvReportCheckBox.IsChecked = defaults.CreateCsvReport;
-            UseAiCheckBox.IsChecked = defaults.UseAiAdvisor;
-            AiConfigPathTextBox.Text = defaults.AiConfigPath;
-            MinVolumeTextBox.Text = defaults.MinSolidVolumeMm3.ToString(CultureInfo.InvariantCulture);
-            BBoxToleranceTextBox.Text = defaults.BoundingBoxToleranceMm.ToString(CultureInfo.InvariantCulture);
-            VolumeToleranceTextBox.Text = defaults.VolumeTolerancePercent.ToString(CultureInfo.InvariantCulture);
-            LoopToleranceTextBox.Text = defaults.LoopClosureToleranceMm.ToString(CultureInfo.InvariantCulture);
-            ConfidenceTextBox.Text = defaults.MinExtrusionConfidence.ToString(CultureInfo.InvariantCulture);
+            UpdateSummaries();
         }
 
         public ConversionOptions Options { get; private set; }
 
-        private void BrowseAiConfigButton_Click(object sender, RoutedEventArgs e)
+        private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFileDialog
+            var window = new ConversionSettingsWindow(Options);
+            window.Owner = this;
+            if (window.ShowDialog() == true)
             {
-                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                CheckFileExists = true
-            };
-
-            if (dialog.ShowDialog(this) == true)
-            {
-                AiConfigPathTextBox.Text = dialog.FileName;
+                Options = window.Options;
+                UpdateSummaries();
             }
         }
 
-        private void ValidateAiConfigButton_Click(object sender, RoutedEventArgs e)
+        private void AiButton_Click(object sender, RoutedEventArgs e)
         {
-            string message;
-            bool ok = _aiConfigService.ValidateConfigFile(AiConfigPathTextBox.Text, out message);
-            AiConfigStatusText.Text = ok ? "Конфиг корректен." : message;
+            var window = new AiSettingsWindow(Options, _aiConfigService);
+            window.Owner = this;
+            if (window.ShowDialog() == true)
+            {
+                Options = window.Options;
+                UpdateSummaries();
+            }
         }
 
         private void ConvertButton_Click(object sender, RoutedEventArgs e)
         {
-            Options = new ConversionOptions
-            {
-                CreateNativeExtrusions = CreateExtrusionsCheckBox.IsChecked == true,
-                TryExtrusionBeforeFreeForm = TryExtrusionBeforeFreeFormCheckBox.IsChecked == true,
-                UseFreeFormFallback = UseFreeFormCheckBox.IsChecked == true,
-                SuperTurboMode = false,
-                CollectUnsupportedGeometry = true,
-                ReadLayerNames = true,
-                ValidateCreatedGeometry = true,
-                DeleteSourceDwgOnSuccess = DeleteSourceCheckBox.IsChecked == true,
-                CreateSubcategoriesByLayer = CreateSubcategoriesCheckBox.IsChecked == true,
-                CreateJsonReport = JsonReportCheckBox.IsChecked == true,
-                CreateCsvReport = CsvReportCheckBox.IsChecked == true,
-                UseAiAdvisor = UseAiCheckBox.IsChecked == true,
-                AiConfigPath = AiConfigPathTextBox.Text,
-                MinSolidVolumeMm3 = ParseDouble(MinVolumeTextBox.Text, 1.0),
-                MinSolidMaxDimensionMm = 0.0,
-                BoundingBoxToleranceMm = ParseDouble(BBoxToleranceTextBox.Text, 2.0),
-                VolumeTolerancePercent = ParseDouble(VolumeToleranceTextBox.Text, 2.0),
-                LoopClosureToleranceMm = ParseDouble(LoopToleranceTextBox.Text, 0.5),
-                MinExtrusionConfidence = Clamp(ParseDouble(ConfidenceTextBox.Text, 0.85), 0.0, 1.0)
-            };
-
             DialogResult = true;
             Close();
         }
 
-        private static double ParseDouble(string text, double fallback)
+        private void UpdateSummaries()
         {
-            double value;
-            if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
-            {
-                return value;
-            }
+            ModeSummaryText.Text = string.Format(
+                "Extrusion: {0} · FreeForm fallback: {1} · Подкатегории: {2}",
+                OnOff(Options.CreateNativeExtrusions),
+                OnOff(Options.UseFreeFormFallback),
+                OnOff(Options.CreateSubcategoriesByLayer));
 
-            if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
-            {
-                return value;
-            }
+            ToleranceSummaryText.Text = string.Format(
+                "Минимальный Solid: {0:0.###} мм3 · Габариты: {1:0.###} мм · Объем: {2:0.###}% · Контур: {3:0.###} мм · Уверенность: {4:0.##}",
+                Options.MinSolidVolumeMm3,
+                Options.BoundingBoxToleranceMm,
+                Options.VolumeTolerancePercent,
+                Options.LoopClosureToleranceMm,
+                Options.MinExtrusionConfidence);
 
-            return fallback;
+            AiSummaryText.Text = Options.UseAiAdvisor
+                ? "AI: включен · " + Options.AiConfigPath
+                : "AI: выключен";
+
+            ReportSummaryText.Text = string.Format(
+                "Отчеты: JSON {0}, CSV {1} · Удаление DWG: {2}",
+                OnOff(Options.CreateJsonReport),
+                OnOff(Options.CreateCsvReport),
+                OnOff(Options.DeleteSourceDwgOnSuccess));
         }
 
-        private static double Clamp(double value, double min, double max)
+        private static Image CreateIcon(System.Windows.Media.ImageSource source)
         {
-            if (value < min)
+            return new Image
             {
-                return min;
-            }
-            if (value > max)
-            {
-                return max;
-            }
+                Source = source,
+                Width = 28,
+                Height = 28,
+                Stretch = System.Windows.Media.Stretch.Uniform
+            };
+        }
 
-            return value;
+        private static string OnOff(bool value)
+        {
+            return value ? "вкл" : "выкл";
         }
     }
 }
