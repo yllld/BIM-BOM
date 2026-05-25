@@ -1,0 +1,13 @@
+{
+  "enabled": false,
+  "provider": "openai-compatible-chat-completions",
+  "baseUrl": "https://api.example.com/v1/chat/completions",
+  "apiKey": "",
+  "authHeaderName": "Authorization",
+  "authScheme": "Bearer",
+  "model": "model-name",
+  "timeoutSec": 60,
+  "temperature": 0,
+  "customHeaders": {},
+  "sendMode": "geometry_passport_only"
+}

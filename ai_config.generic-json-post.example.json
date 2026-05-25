@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "provider": "generic-json-post",
+  "baseUrl": "https://api.example.com/analyze-geometry",
+  "apiKey": "",
+  "authHeaderName": "Authorization",
+  "authScheme": "Bearer",
+  "timeoutSec": 60,
+  "customHeaders": {},
+  "sendMode": "geometry_passport_only"
+}

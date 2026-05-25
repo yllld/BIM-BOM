@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+ai_config.json
+/logs/
+/reports/
+*.log
+packages/

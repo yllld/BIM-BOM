@@ -1,0 +1,78 @@
+<Window x:Class="FamilyConverter.Revit2021.UI.ReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Family Converter: отчет"
+        Width="940"
+        Height="640"
+        MinWidth="780"
+        MinHeight="500"
+        Background="#F4F7F6"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#1E7260" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="LineBrush" Color="#D6E2DF" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#60706B" />
+
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="12,4" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="{StaticResource AccentBrush}" Padding="18,14">
+            <StackPanel>
+                <TextBlock Text="Отчет конвертации" Foreground="#FFFFFF" FontSize="21" FontWeight="SemiBold" />
+                <TextBlock x:Name="SummaryText" Foreground="#D7ECE7" Margin="0,4,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="14">
+            <Button Content="Закрыть" Width="100" IsDefault="True" Click="CloseButton_Click" />
+        </StackPanel>
+
+        <Grid Margin="14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock x:Name="ReportPathsText" TextWrapping="Wrap" Foreground="#223A34" />
+                    <TextBlock x:Name="MessagesText" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="6" Padding="1">
+                <DataGrid x:Name="ResultsGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          BorderThickness="0"
+                          AlternatingRowBackground="#F0F7F5">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Object" Binding="{Binding ObjectId}" Width="90" />
+                        <DataGridTextColumn Header="Layer" Binding="{Binding LayerName}" Width="130" />
+                        <DataGridTextColumn Header="Geometry" Binding="{Binding SourceGeometryType}" Width="90" />
+                        <DataGridTextColumn Header="Class" Binding="{Binding LocalClassification}" Width="95" />
+                        <DataGridTextColumn Header="Conf." Binding="{Binding LocalConfidence, StringFormat=0.00}" Width="70" />
+                        <DataGridTextColumn Header="Method" Binding="{Binding FinalMethod}" Width="90" />
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" />
+                        <DataGridCheckBoxColumn Header="Fallback" Binding="{Binding FallbackUsed}" Width="75" />
+                        <DataGridTextColumn Header="ElementId" Binding="{Binding CreatedElementId.IntegerValue}" Width="80" />
+                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>
