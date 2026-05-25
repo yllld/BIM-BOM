@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using FamilyConverter.Revit2021;
 
 namespace FamilyConverter.Revit2021.Models
 {
@@ -42,7 +43,7 @@ namespace FamilyConverter.Revit2021.Models
                 CreateJsonReport = true,
                 CreateCsvReport = true,
                 UseAiAdvisor = false,
-                AiConfigPath = Path.Combine(appData, "ENECA_MEP", "FamilyConverter", "ai_config.json"),
+                AiConfigPath = Path.Combine(appData, ProductInfo.AppDataRootFolder, ProductInfo.AppDataProductFolder, "ai_config.json"),
                 MinSolidVolumeMm3 = 1.0,
                 MinSolidMaxDimensionMm = 0.0,
                 BoundingBoxToleranceMm = 2.0,

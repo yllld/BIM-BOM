@@ -1,7 +1,7 @@
 <Window x:Class="FamilyConverter.Revit2021.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Family Converter"
+        Title="DWG Converter - Family Geometry"
         Width="760"
         Height="780"
         MinWidth="680"
@@ -67,8 +67,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Family Converter" Foreground="#FFFFFF" FontSize="22" FontWeight="SemiBold" />
-                    <TextBlock Text="DWG geometry to Revit family forms" Foreground="#D7ECE7" Margin="0,3,0,0" />
+                    <TextBlock Text="DWG Converter - Family Geometry" Foreground="#FFFFFF" FontSize="22" FontWeight="SemiBold" />
+                    <TextBlock Text="Simple Convert" Foreground="#D7ECE7" Margin="0,3,0,0" />
                 </StackPanel>
                 <Border Grid.Column="1" BorderBrush="#D7ECE7" BorderThickness="1" CornerRadius="4" Padding="10,5" VerticalAlignment="Center">
                     <TextBlock Text="Revit 2021" Foreground="#FFFFFF" FontWeight="SemiBold" />

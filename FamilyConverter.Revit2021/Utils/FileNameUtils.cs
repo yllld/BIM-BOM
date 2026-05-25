@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using FamilyConverter.Revit2021;
 
 namespace FamilyConverter.Revit2021.Utils
 {
@@ -22,7 +23,7 @@ namespace FamilyConverter.Revit2021.Utils
                 // Fall through to temp directory.
             }
 
-            string tempDirectory = Path.Combine(Path.GetTempPath(), "Family_Converter");
+            string tempDirectory = Path.Combine(Path.GetTempPath(), ProductInfo.AppDataRootFolder + "_" + ProductInfo.AppDataProductFolder);
             Directory.CreateDirectory(tempDirectory);
             return tempDirectory;
         }

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RevitAddIns>
   <AddIn Type="Application">
-    <Name>Family Converter</Name>
+    <Name>DWG Converter - Family Geometry</Name>
     <Assembly>%APPDATA%\Autodesk\Revit\Addins\2021\FamilyConverter.Revit2021.dll</Assembly>
     <AddInId>80B7093F-8B7F-4FC0-B3D2-977FB234B6C4</AddInId>
     <FullClassName>FamilyConverter.Revit2021.App</FullClassName>
-    <VendorId>ENECA</VendorId>
-    <VendorDescription>ENECA MEP</VendorDescription>
+    <VendorId>DWGC</VendorId>
+    <VendorDescription>DWG Converter</VendorDescription>
   </AddIn>
 </RevitAddIns>

@@ -59,6 +59,7 @@
   <ItemGroup>
     <Compile Include="App.cs" />
     <Compile Include="Command.cs" />
+    <Compile Include="ProductInfo.cs" />
     <Compile Include="TurboCommand.cs" />
     <Compile Include="Models\AiConfig.cs" />
     <Compile Include="Models\AiGeometryRequest.cs" />

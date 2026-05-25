@@ -26,7 +26,7 @@ namespace FamilyConverter.Revit2021
 
                 if (!selectionService.TryGetSingleImportInstance(uidoc, out importInstance, out validationMessage))
                 {
-                    TaskDialog.Show("Family Converter Turbo", validationMessage);
+                    TaskDialog.Show(ProductInfo.Name + " Turbo", validationMessage);
                     return Result.Cancelled;
                 }
 
@@ -59,14 +59,14 @@ namespace FamilyConverter.Revit2021
 
                 ConversionSummary summary = conversionService.Convert(uiapp, importInstance, geometryObjects, options);
 
-                TaskDialog.Show("Family Converter Turbo", BuildSummary(summary, geometryObjects.Count, options));
+                TaskDialog.Show(ProductInfo.Name + " Turbo", BuildSummary(summary, geometryObjects.Count, options));
                 return Result.Succeeded;
             }
             catch (Exception ex)
             {
                 logger.Error("Super Turbo command failed.", ex);
                 message = ex.Message;
-                TaskDialog.Show("Family Converter Turbo", "Команда завершилась с ошибкой:\n" + ex.Message);
+                TaskDialog.Show(ProductInfo.Name + " Turbo", "Команда завершилась с ошибкой:\n" + ex.Message);
                 return Result.Failed;
             }
         }
@@ -74,7 +74,7 @@ namespace FamilyConverter.Revit2021
         private static string BuildSummary(ConversionSummary summary, int collectedSolidCount, ConversionOptions options)
         {
             return string.Format(
-                "Super Turbo завершен.\n\nПередано на FreeForm: {0}\nFreeFormElement: {1}\nПропущено: {2}\nОшибки: {3}\nПредупреждения: {4}\n\nПорог объема: {5:0.###} мм3\nПорог габарита: {6:0.###} мм\n\nJSON: {7}\nCSV: {8}",
+                "Turbo FreeForm завершен.\n\nПередано на FreeForm: {0}\nFreeFormElement: {1}\nПропущено: {2}\nОшибки: {3}\nПредупреждения: {4}\n\nПорог объема: {5:0.###} мм3\nПорог габарита: {6:0.###} мм\n\nJSON: {7}\nCSV: {8}",
                 collectedSolidCount,
                 summary.FreeFormCount,
                 summary.SkippedCount,

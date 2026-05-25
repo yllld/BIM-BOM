@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using FamilyConverter.Revit2021;
 
 namespace FamilyConverter.Revit2021.Services
 {
@@ -12,9 +13,9 @@ namespace FamilyConverter.Revit2021.Services
             try
             {
                 string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                string folder = Path.Combine(appData, "ENECA_MEP", "FamilyConverter", "logs");
+                string folder = Path.Combine(appData, ProductInfo.AppDataRootFolder, ProductInfo.AppDataProductFolder, "logs");
                 Directory.CreateDirectory(folder);
-                _logFilePath = Path.Combine(folder, "FamilyConverter_" + DateTime.Now.ToString("yyyyMMdd") + ".log");
+                _logFilePath = Path.Combine(folder, "DWGConverter_FamilyGeometry_" + DateTime.Now.ToString("yyyyMMdd") + ".log");
             }
             catch
             {

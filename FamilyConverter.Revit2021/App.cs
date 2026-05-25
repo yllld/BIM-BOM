@@ -7,16 +7,13 @@ namespace FamilyConverter.Revit2021
 {
     public class App : IExternalApplication
     {
-        private const string TabName = "ENECA_MEP";
-        private const string PanelName = "DWG Converter";
-
         public Result OnStartup(UIControlledApplication application)
         {
             try
             {
                 try
                 {
-                    application.CreateRibbonTab(TabName);
+                    application.CreateRibbonTab(ProductInfo.TabName);
                 }
                 catch
                 {
@@ -27,14 +24,14 @@ namespace FamilyConverter.Revit2021
                 string assemblyPath = Assembly.GetExecutingAssembly().Location;
                 var buttonData = new PushButtonData(
                     "FamilyConverterCommand",
-                    "Family\nGeometry",
+                    "Simple\nConvert",
                     assemblyPath,
                     typeof(Command).FullName);
 
                 PushButton button = panel.AddItem(buttonData) as PushButton;
                 if (button != null)
                 {
-                    button.ToolTip = "Преобразовать выбранный импортированный 3D DWG в геометрию семейства Revit.";
+                    button.ToolTip = "Обычная конвертация выбранного импортированного 3D DWG в геометрию семейства Revit.";
                     SetButtonImage(button);
                 }
 
@@ -53,7 +50,7 @@ namespace FamilyConverter.Revit2021
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Family Converter", "Не удалось создать кнопку Family Converter:\n" + ex.Message);
+                TaskDialog.Show(ProductInfo.Name, "Не удалось создать кнопки DWG Converter:\n" + ex.Message);
             }
 
             return Result.Succeeded;
@@ -66,15 +63,15 @@ namespace FamilyConverter.Revit2021
 
         private static RibbonPanel GetOrCreatePanel(UIControlledApplication application)
         {
-            foreach (RibbonPanel panel in application.GetRibbonPanels(TabName))
+            foreach (RibbonPanel panel in application.GetRibbonPanels(ProductInfo.TabName))
             {
-                if (string.Equals(panel.Name, PanelName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(panel.Name, ProductInfo.PanelName, StringComparison.OrdinalIgnoreCase))
                 {
                     return panel;
                 }
             }
 
-            return application.CreateRibbonPanel(TabName, PanelName);
+            return application.CreateRibbonPanel(ProductInfo.TabName, ProductInfo.PanelName);
         }
 
         private static void SetButtonImage(PushButton button)

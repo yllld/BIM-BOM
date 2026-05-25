@@ -63,7 +63,7 @@ namespace FamilyConverter.Revit2021.Services
                 }
             }
 
-            using (var group = new TransactionGroup(document, "Family Converter"))
+            using (var group = new TransactionGroup(document, ProductInfo.Name))
             {
                 group.Start();
 
@@ -232,7 +232,7 @@ namespace FamilyConverter.Revit2021.Services
             result.LocalConfidence = 0;
             result.FinalMethod = ConversionMethod.FreeForm;
             result.FallbackUsed = true;
-            result.ExtrusionFailedReason = "Super Turbo: Extrusion and geometry analysis skipped. Solid is converted directly to FreeFormElement.";
+            result.ExtrusionFailedReason = "Turbo FreeForm: Extrusion and geometry analysis skipped. Solid is converted directly to FreeFormElement.";
             TryCreateFreeForm(document, info, options, result);
         }
 
@@ -294,7 +294,7 @@ namespace FamilyConverter.Revit2021.Services
         {
             try
             {
-                Element element = CreateInTransaction(document, "Family Converter: Extrusion", () => _extrusionService.Create(document, info, candidate, options, false));
+                Element element = CreateInTransaction(document, ProductInfo.Name + ": Extrusion", () => _extrusionService.Create(document, info, candidate, options, false));
                 CompleteCreatedResult(document, info, element, options, result, ConversionMethod.Extrusion, "Создан нативный Extrusion.");
                 if (ShouldFallbackAfterExtrusionValidation(result, options))
                 {
@@ -315,7 +315,7 @@ namespace FamilyConverter.Revit2021.Services
                 {
                     try
                     {
-                        Element element = CreateInTransaction(document, "Family Converter: Extrusion outer loop", () => _extrusionService.Create(document, info, candidate, options, true));
+                        Element element = CreateInTransaction(document, ProductInfo.Name + ": Extrusion outer loop", () => _extrusionService.Create(document, info, candidate, options, true));
                         result.Warnings.Add("Внутренние контуры не были использованы: Revit не принял полный профиль.");
                         CompleteCreatedResult(document, info, element, options, result, ConversionMethod.Extrusion, "Создан нативный Extrusion по внешнему контуру.");
                         if (ShouldFallbackAfterExtrusionValidation(result, options))
@@ -368,7 +368,7 @@ namespace FamilyConverter.Revit2021.Services
                 return;
             }
 
-            CreateInTransaction(document, "Family Converter: rollback invalid Extrusion", () =>
+            CreateInTransaction(document, ProductInfo.Name + ": rollback invalid Extrusion", () =>
             {
                 document.Delete(element.Id);
                 return null;
@@ -379,7 +379,7 @@ namespace FamilyConverter.Revit2021.Services
         {
             try
             {
-                Element element = CreateInTransaction(document, "Family Converter: FreeFormElement", () => _freeFormService.Create(document, info, options));
+                Element element = CreateInTransaction(document, ProductInfo.Name + ": FreeFormElement", () => _freeFormService.Create(document, info, options));
                 CompleteCreatedResult(document, info, element, options, result, ConversionMethod.FreeForm, "Создан FreeFormElement: геометрия перенесена как непараметрическая форма.");
                 return true;
             }
@@ -490,7 +490,7 @@ namespace FamilyConverter.Revit2021.Services
 
             try
             {
-                CreateInTransaction(document, "Family Converter: удалить исходный DWG", () =>
+                CreateInTransaction(document, ProductInfo.Name + ": удалить исходный DWG", () =>
                 {
                     document.Delete(importInstance.Id);
                     return null;

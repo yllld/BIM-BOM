@@ -1,8 +1,8 @@
-# Family Converter
+# DWG Converter - Family Geometry
 
-Family Converter — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
+DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
 
-Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `ENECA_MEP -> DWG Converter -> Family Geometry`.
+Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `DWG Converter -> Family Geometry -> Simple Convert`.
 
 ## Ограничения MVP
 
@@ -36,8 +36,8 @@ C:\Program Files\Autodesk\Revit 2021\
 
 1. Откройте `src/FamilyConverter.Revit2021.sln` в Visual Studio.
 2. Восстановите NuGet-пакеты.
-3. Соберите проект `FamilyConverter.Revit2021` под .NET Framework 4.8.
-4. Скопируйте DLL, `FamilyConverter.addin` и папку `Resources`, если используется иконка, в каталог add-in Revit 2021.
+3. Соберите solution в конфигурации `Release`.
+4. Для ручной установки скопируйте DLL и `FamilyConverter.addin` в каталог add-in Revit 2021.
 
 Каталог установки манифеста:
 
@@ -51,23 +51,49 @@ C:\Program Files\Autodesk\Revit 2021\
 %APPDATA%\Autodesk\Revit\Addins\2021\FamilyConverter.Revit2021.dll
 ```
 
+## Установщик
+
+Release-сборка создает единый EXE-установщик:
+
+```text
+DWGConverter.FamilyGeometry.Installer\bin\Release\DWGConverter-FamilyGeometry-Installer.exe
+```
+
+Готовый собранный файл для скачивания хранится в:
+
+```text
+dist\DWGConverter-FamilyGeometry-Installer.exe
+```
+
+Установщик не требует прав администратора. Он записывает DLL и `.addin` в:
+
+```text
+%APPDATA%\Autodesk\Revit\Addins\2021\
+```
+
+Для тихой установки можно запустить:
+
+```text
+DWGConverter-FamilyGeometry-Installer.exe /quiet
+```
+
 ## Использование
 
 1. Откройте или создайте семейство Revit.
 2. Импортируйте 3D DWG стандартными средствами Revit.
 3. Переместите/поверните DWG как нужно.
 4. Выберите импортированный DWG-элемент.
-5. Запустите `ENECA_MEP -> DWG Converter -> Family Geometry`.
+5. Запустите `DWG Converter -> Family Geometry -> Simple Convert`.
 6. Проверьте настройки преобразования.
 7. Нажмите `Преобразовать`.
 8. Проверьте созданные формы и отчет.
 
-## Super Turbo FreeForm
+## Turbo FreeForm
 
 Для очень тяжелых импортированных DWG используйте:
 
 ```text
-ENECA_MEP -> DWG Converter -> Turbo FreeForm
+DWG Converter -> Family Geometry -> Turbo FreeForm
 ```
 
 Режим намеренно грубее обычного, но быстрее:
@@ -101,7 +127,7 @@ AI-советник отключен по умолчанию. Плагин по�
 Путь по умолчанию:
 
 ```text
-%APPDATA%\ENECA_MEP\FamilyConverter\ai_config.json
+%APPDATA%\DWG_Converter\Family_Geometry\ai_config.json
 ```
 
 Пример находится в `src/ai_config.example.json`. В нем нет реальных ключей. Реальный `ai_config.json` не должен попадать в репозиторий.
@@ -124,7 +150,7 @@ DWG_Conversion_Reports
 Если семейство не сохранено:
 
 ```text
-%TEMP%\Family_Converter\
+%TEMP%\DWG_Converter_Family_Geometry\
 ```
 
 Создаются файлы:
@@ -141,14 +167,14 @@ CSV использует разделитель `;` для удобства в �
 Логи пишутся в:
 
 ```text
-%APPDATA%\ENECA_MEP\FamilyConverter\logs\
+%APPDATA%\DWG_Converter\Family_Geometry\logs\
 ```
 
 API-ключи не логируются.
 
 ## License
 
-MEP Converter is source-available, not open source.
+DWG Converter - Family Geometry is source-available, not open source.
 
 The public repository is licensed under the PolyForm Noncommercial License 1.0.0
 unless a separate written license is granted by the copyright holder.

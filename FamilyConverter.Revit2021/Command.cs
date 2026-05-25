@@ -20,14 +20,14 @@ namespace FamilyConverter.Revit2021
 
             try
             {
-                logger.Info("Запуск команды Family Converter.");
+                logger.Info("Запуск команды Simple Convert.");
                 var selectionService = new SelectionService();
                 ImportInstance importInstance;
                 string validationMessage;
 
                 if (!selectionService.TryGetSingleImportInstance(uidoc, out importInstance, out validationMessage))
                 {
-                    TaskDialog.Show("Family Converter", validationMessage);
+                    TaskDialog.Show(ProductInfo.Name, validationMessage);
                     return Result.Cancelled;
                 }
 
@@ -71,7 +71,7 @@ namespace FamilyConverter.Revit2021
             {
                 logger.Error("Критическая ошибка команды.", ex);
                 message = ex.Message;
-                TaskDialog.Show("Family Converter", "Команда завершилась с ошибкой:\n" + ex.Message);
+                TaskDialog.Show(ProductInfo.Name, "Команда завершилась с ошибкой:\n" + ex.Message);
                 return Result.Failed;
             }
         }

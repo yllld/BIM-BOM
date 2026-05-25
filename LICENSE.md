@@ -1,4 +1,4 @@
-# MEP Converter Source-Available License
+# DWG Converter - Family Geometry Source-Available License
 
 Copyright (c) 2026 yllld.
 
