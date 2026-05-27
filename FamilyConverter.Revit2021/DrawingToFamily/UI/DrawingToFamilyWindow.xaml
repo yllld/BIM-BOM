@@ -1,0 +1,214 @@
+<Window x:Class="FamilyConverter.Revit2021.DrawingToFamily.UI.DrawingToFamilyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FamilyConverter.Revit2021.DrawingToFamily.UI"
+        Title="DWG Converter - 2D Drawing to Family"
+        Width="900"
+        Height="700"
+        MinWidth="780"
+        MinHeight="620"
+        Background="#F7F6FA"
+        FontFamily="Segoe UI"
+        FontSize="13"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/FamilyConverter.Revit2021;component/UI/DwgConverterTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <local:LayerColorBrushConverter x:Key="LayerColorBrushConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <DockPanel Style="{StaticResource DwgRootDockStyle}">
+        <Border DockPanel.Dock="Top" Style="{StaticResource DwgTopBarStyle}">
+            <StackPanel>
+                <TextBlock Text="2D Drawing to Family" Style="{StaticResource DwgHeaderTitleTextStyle}" />
+                <TextBlock Text="Слои, рамки проекций и построение всей доступной геометрии без AI" Style="{StaticResource DwgHeaderSubtitleTextStyle}" />
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource DwgFooterBarStyle}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Переанализировать"
+                        Width="150"
+                        Margin="0,0,10,0"
+                        Click="ReanalyzeButton_Click" />
+                <Button Content="Построить"
+                        Width="120"
+                        Style="{StaticResource DwgPrimaryButtonStyle}"
+                        IsDefault="True"
+                        Margin="0,0,10,0"
+                        Click="BuildButton_Click" />
+                <Button Content="Отмена"
+                        Width="100"
+                        Click="CancelButton_Click" />
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+            <StackPanel>
+                <Border Style="{StaticResource DwgSectionCardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Найденный DWG" Style="{StaticResource DwgSectionTitleTextStyle}" />
+                            <TextBlock x:Name="ImportNameText" Style="{StaticResource DwgValueTextStyle}" />
+                            <TextBlock x:Name="ObjectSummaryText" Style="{StaticResource DwgMutedTextStyle}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Габарит DWG" Style="{StaticResource DwgSectionTitleTextStyle}" />
+                            <TextBlock x:Name="BoundsText" Style="{StaticResource DwgMutedTextStyle}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource DwgSectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Слои DWG" Style="{StaticResource DwgSectionTitleTextStyle}" />
+                        <DataGrid x:Name="LayerGrid"
+                                  AutoGenerateColumns="False"
+                                  CanUserSortColumns="True"
+                                  MinHeight="210"
+                                  MaxHeight="270"
+                                  SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Цвет" Width="112">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Border Width="24"
+                                                        Height="14"
+                                                        CornerRadius="2"
+                                                        BorderBrush="#9A97A6"
+                                                        BorderThickness="1"
+                                                        Background="{Binding LayerColorHex, Converter={StaticResource LayerColorBrushConverter}}" />
+                                                <TextBlock Text="{Binding ColorLabel}"
+                                                           Margin="8,0,0,0"
+                                                           FontSize="11"
+                                                           Foreground="#5D596C"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Слой" Binding="{Binding LayerName}" Width="2.3*" />
+                                <DataGridTextColumn Header="Объекты" Binding="{Binding ObjectCount}" Width="80" />
+                                <DataGridTemplateColumn Header="Роль" Width="230">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding DataContext.RoleOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      SelectedItem="{Binding UserRole, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      MinWidth="205" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridCheckBoxColumn Header="Вкл." Binding="{Binding IsIncluded, Mode=TwoWay}" Width="64" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource DwgSectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Проекции" Style="{StaticResource DwgSectionTitleTextStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" BorderBrush="#E1DFEA" BorderThickness="0,0,1,0" Padding="0,0,14,0" Margin="0,0,14,0">
+                                <StackPanel>
+                                    <TextBlock Text="Вид сверху / Plan View" Style="{StaticResource DwgLabelTextStyle}" />
+                                    <TextBlock x:Name="PlanStatusText" Text="не выбрано" Style="{StaticResource DwgMutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                    <Button Content="Выбрать вид сверху" Click="PickPlanButton_Click" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" BorderBrush="#E1DFEA" BorderThickness="0,0,1,0" Padding="0,0,14,0" Margin="0,0,14,0">
+                                <StackPanel>
+                                    <TextBlock Text="Вид спереди / Front View" Style="{StaticResource DwgLabelTextStyle}" />
+                                    <TextBlock x:Name="FrontStatusText" Text="не выбрано" Style="{StaticResource DwgMutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                    <Button Content="Выбрать вид спереди" Click="PickFrontButton_Click" />
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Вид сбоку / Side View" Style="{StaticResource DwgLabelTextStyle}" />
+                                <TextBlock x:Name="SideStatusText" Text="не выбрано" Style="{StaticResource DwgMutedTextStyle}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                <Button Content="Выбрать вид сбоку" Click="PickSideButton_Click" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                            <Button Content="Очистить выбор проекций" Width="180" Click="ClearProjectionButton_Click" />
+                            <TextBlock x:Name="ProjectionWarningText"
+                                       Margin="14,4,0,0"
+                                       Style="{StaticResource DwgMutedTextStyle}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Border Margin="0,14,0,0"
+                                Padding="12"
+                                BorderBrush="#E1DFEA"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Background="#FBFAFD">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <CheckBox x:Name="UseIsoCheckBox"
+                                              Content="Использовать 3D/ISO вид как источник детализации"
+                                              VerticalAlignment="Center" />
+                                    <TextBlock x:Name="IsoStatusText"
+                                               Text="не выбрано"
+                                               Style="{StaticResource DwgMutedTextStyle}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0" />
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Content="Выбрать 3D/ISO вид"
+                                        VerticalAlignment="Center"
+                                        Click="PickIsoButton_Click" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource DwgSectionCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Параметры геометрии" Style="{StaticResource DwgSectionTitleTextStyle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="150" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Геометрический допуск, мм" Style="{StaticResource DwgLabelTextStyle}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" x:Name="ClosureToleranceTextBox" Style="{StaticResource DwgCompactTextBoxStyle}" />
+                            <TextBlock Grid.Column="3" Text="Минимальный размер элемента, мм" Style="{StaticResource DwgLabelTextStyle}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="4" x:Name="MinimumSizeTextBox" Style="{StaticResource DwgCompactTextBoxStyle}" />
+                        </Grid>
+                        <TextBlock x:Name="AnalysisSummaryText"
+                                   Margin="0,12,0,0"
+                                   Style="{StaticResource DwgMutedTextStyle}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

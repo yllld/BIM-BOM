@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <PlatformTarget>x64</PlatformTarget>
+    <CodePage>65001</CodePage>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -60,6 +61,7 @@
     <Compile Include="App.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="DonateCommand.cs" />
+    <Compile Include="DrawingToFamily\Commands\Command2DDrawingToFamily.cs" />
     <Compile Include="OpenReportsFolderCommand.cs" />
     <Compile Include="ProductInfo.cs" />
     <Compile Include="SupportCommand.cs" />
@@ -67,11 +69,26 @@
     <Compile Include="Models\AiConfig.cs" />
     <Compile Include="Models\AiGeometryRequest.cs" />
     <Compile Include="Models\AiGeometryResponse.cs" />
+    <Compile Include="DrawingToFamily\Models\BuildCandidate.cs" />
+    <Compile Include="DrawingToFamily\Models\BuildDirection.cs" />
     <Compile Include="Models\ConversionMethod.cs" />
     <Compile Include="Models\ConversionOptions.cs" />
     <Compile Include="Models\ConversionResult.cs" />
     <Compile Include="Models\ConversionStatus.cs" />
     <Compile Include="Models\ConversionSummary.cs" />
+    <Compile Include="DrawingToFamily\Models\ContourType.cs" />
+    <Compile Include="DrawingToFamily\Models\DrawingProjectionRegion.cs" />
+    <Compile Include="DrawingToFamily\Models\DrawingToFamilyPreview.cs" />
+    <Compile Include="DrawingToFamily\Models\DrawingToFamilyResult.cs" />
+    <Compile Include="DrawingToFamily\Models\DrawingToFamilySettings.cs" />
+    <Compile Include="DrawingToFamily\Models\DwgCurveEntity.cs" />
+    <Compile Include="DrawingToFamily\Models\DwgLayerInfo.cs" />
+    <Compile Include="DrawingToFamily\Models\LayerRoleOption.cs" />
+    <Compile Include="DrawingToFamily\Models\NativeFeatureType.cs" />
+    <Compile Include="DrawingToFamily\Models\NativeGeometryFeature.cs" />
+    <Compile Include="DrawingToFamily\Models\ProjectionType.cs" />
+    <Compile Include="DrawingToFamily\Models\RecognizedContour.cs" />
+    <Compile Include="DrawingToFamily\Models\RecognitionRole.cs" />
     <Compile Include="Models\EdgeInfo.cs" />
     <Compile Include="Models\FaceInfo.cs" />
     <Compile Include="Models\GeometryClassification.cs" />
@@ -83,6 +100,16 @@
     <Compile Include="Services\AiConfigService.cs" />
     <Compile Include="Services\AiGeometryAdvisor.cs" />
     <Compile Include="Services\ConversionService.cs" />
+    <Compile Include="DrawingToFamily\Services\ContourRecognitionService.cs" />
+    <Compile Include="DrawingToFamily\Services\DrawingToFamilyLogger.cs" />
+    <Compile Include="DrawingToFamily\Services\DrawingToFamilyReportWriter.cs" />
+    <Compile Include="DrawingToFamily\Services\DwgImportGeometryReader.cs" />
+    <Compile Include="DrawingToFamily\Services\DwgLayerAnalyzer.cs" />
+    <Compile Include="DrawingToFamily\Services\FamilyGeometryBuilder.cs" />
+    <Compile Include="DrawingToFamily\Services\NativeFeatureExtractionService.cs" />
+    <Compile Include="DrawingToFamily\Services\ProjectionDetector.cs" />
+    <Compile Include="DrawingToFamily\Services\ProjectionFusionService.cs" />
+    <Compile Include="DrawingToFamily\Services\ProjectionRegionPicker.cs" />
     <Compile Include="Services\ExtrusionCreationService.cs" />
     <Compile Include="Services\FreeFormCreationService.cs" />
     <Compile Include="Services\GeometryAnalysisService.cs" />
@@ -101,6 +128,9 @@
     <Compile Include="UI\ConversionSettingsWindow.xaml.cs">
       <DependentUpon>ConversionSettingsWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DrawingToFamily\UI\DrawingToFamilyWindow.xaml.cs">
+      <DependentUpon>DrawingToFamilyWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\EmbeddedIcons.cs" />
     <Compile Include="UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
@@ -116,6 +146,10 @@
     <Compile Include="UI\TurboSettingsWindow.xaml.cs">
       <DependentUpon>TurboSettingsWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DrawingToFamily\Utils\BoundingBoxUtils.cs" />
+    <Compile Include="DrawingToFamily\Utils\CurveLoopUtils.cs" />
+    <Compile Include="DrawingToFamily\Utils\GeometryToleranceUtils.cs" />
+    <Compile Include="DrawingToFamily\Utils\UnitUtilsExtensions.cs" />
     <Compile Include="Utils\CurveLoopUtils.cs" />
     <Compile Include="Utils\FileNameUtils.cs" />
     <Compile Include="Utils\GeometryUtils.cs" />
@@ -132,6 +166,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="UI\DwgConverterTheme.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="DrawingToFamily\UI\DrawingToFamilyWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -153,6 +191,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets\Ribbon\convert-2d.png" />
     <EmbeddedResource Include="Assets\Ribbon\donate.png" />
     <EmbeddedResource Include="Assets\Ribbon\reports-folder.png" />
     <EmbeddedResource Include="Assets\Ribbon\simple-convert.png" />

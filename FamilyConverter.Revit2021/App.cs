@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using Autodesk.Revit.UI;
+using FamilyConverter.Revit2021.DrawingToFamily.Commands;
 using FamilyConverter.Revit2021.UI;
 
 namespace FamilyConverter.Revit2021
@@ -40,6 +41,15 @@ namespace FamilyConverter.Revit2021
                     typeof(TurboCommand),
                     RibbonIconKind.TurboFreeForm,
                     "Сверхбыстрый режим для тяжелых DWG: Solid сразу создаются как FreeFormElement без предпросмотра и Extrusion.");
+
+                AddButton(
+                    panel,
+                    assemblyPath,
+                    "FamilyConverter2DDrawingToFamilyCommand",
+                    "2D Drawing\nto Family",
+                    typeof(Command2DDrawingToFamily),
+                    RibbonIconKind.DrawingToFamily,
+                    "Создать черновую 3D-геометрию семейства из выбранного импортированного 2D DWG без AI: слои, проекции, контуры и устойчивый fallback.");
 
                 panel.AddSeparator();
 
