@@ -2,6 +2,8 @@
 
 MVP Revit Add-in на C# / WPF для Autodesk Revit 2021. Плагин работает внутри редактора семейств и помогает получать нативную геометрию Revit из уже импортированных DWG.
 
+Для Autodesk Revit 2025 предусмотрена отдельная сборка на .NET 8 с командами `Simple Convert` и `Turbo FreeForm`.
+
 Плагин не импортирует DWG сам. Пользователь импортирует DWG стандартными средствами Revit, выбирает `ImportInstance` и запускает нужную команду на панели:
 
 ```text
@@ -10,7 +12,7 @@ BIM BOM -> DWG Converter - Family Geometry
 
 ## Команды
 
-- `Simple Convert` - существующий режим для 3D DWG.
+- `Simple Convert` - основной режим для 3D DWG: Solid преобразуются в Extrusion/FreeFormElement; Mesh сначала пробуется как FreeFormElement с referenceable-гранями, открытые плоские контуры автоматически закрываются и повторно проверяются, а для небезопасной топологии сохраняется DirectShape fallback.
 - `Turbo FreeForm` - быстрый fallback-режим для тяжёлых 3D импортов.
 - `2D Drawing to Family` - инженерный MVP для 2D DWG без AI, OCR, ML и внешних API.
 - `Reports Folder` - открывает папку отчётов.
@@ -173,6 +175,44 @@ Installer устанавливает add-in в:
 
 ```text
 DWGConverter-FamilyGeometry-Installer.exe /quiet
+```
+
+### Revit 2025: Simple Convert и Turbo FreeForm
+
+Откройте:
+
+```text
+src\FamilyConverter.Revit2025.sln
+```
+
+Соберите solution в конфигурации `Release`, затем опубликуйте single-file installer:
+
+```text
+dotnet publish DWGConverter.FamilyGeometry.Revit2025.Installer\DWGConverter.FamilyGeometry.Revit2025.Installer.csproj -c Release
+```
+
+Отдельный installer:
+
+```text
+DWGConverter.FamilyGeometry.Revit2025.Installer\bin\Release\net8.0-windows\win-x64\publish\DWGConverter-FamilyGeometry-Revit2025-Installer.exe
+```
+
+Копия для выдачи:
+
+```text
+dist\DWGConverter-FamilyGeometry-Revit2025-Installer.exe
+```
+
+Installer устанавливает отдельную DLL и manifest в:
+
+```text
+%APPDATA%\Autodesk\Revit\Addins\2025\
+```
+
+Тихая установка:
+
+```text
+DWGConverter-FamilyGeometry-Revit2025-Installer.exe /quiet
 ```
 
 ## AI

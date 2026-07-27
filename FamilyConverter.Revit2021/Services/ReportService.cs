@@ -73,7 +73,32 @@ namespace FamilyConverter.Revit2021.Services
                     fallback_used = result.FallbackUsed,
                     extrusion_failed_reason = result.ExtrusionFailedReason,
                     validation_bbox_deviation_mm = result.ValidationBoundingBoxDeviationMm,
-                    validation_volume_deviation_percent = result.ValidationVolumeDeviationPercent
+                    validation_volume_deviation_percent = result.ValidationVolumeDeviationPercent,
+                    mesh_source_triangle_count = result.MeshSourceTriangleCount,
+                    mesh_created_triangle_count = result.MeshCreatedTriangleCount,
+                    mesh_skipped_triangle_count = result.MeshSkippedTriangleCount,
+                    mesh_source_vertex_count = result.MeshSourceVertexCount,
+                    mesh_source_normal_count = result.MeshSourceNormalCount,
+                    mesh_output_normal_count = result.MeshOutputNormalCount,
+                    mesh_source_normal_distribution = result.MeshSourceNormalDistribution,
+                    mesh_output_normal_distribution = result.MeshOutputNormalDistribution,
+                    mesh_creation_path = result.MeshCreationPath,
+                    mesh_fallback_reason = result.MeshFallbackReason,
+                    mesh_freeform_failure_reason = result.MeshFreeFormFailureReason,
+                    mesh_direct_mesh_failure_reason = result.MeshDirectMeshFailureReason,
+                    mesh_solid_face_count = result.MeshSolidFaceCount,
+                    mesh_freeform_planar_face_count = result.MeshFreeFormPlanarFaceCount,
+                    mesh_freeform_reference_face_count = result.MeshFreeFormReferenceFaceCount,
+                    mesh_boundary_edge_count = result.MeshBoundaryEdgeCount,
+                    mesh_boundary_loop_count = result.MeshBoundaryLoopCount,
+                    mesh_non_manifold_edge_count = result.MeshNonManifoldEdgeCount,
+                    mesh_orientation_flip_count = result.MeshOrientationFlipCount,
+                    mesh_orientation_conflict_count = result.MeshOrientationConflictCount,
+                    mesh_planar_cap_count = result.MeshPlanarCapCount,
+                    mesh_non_planar_boundary_loop_count = result.MeshNonPlanarBoundaryLoopCount,
+                    mesh_open_boundary_chain_count = result.MeshOpenBoundaryChainCount,
+                    mesh_topology_repair_applied = result.MeshTopologyRepairApplied,
+                    mesh_topology_repair_failure_reason = result.MeshTopologyRepairFailureReason
                 });
             }
 
@@ -83,7 +108,7 @@ namespace FamilyConverter.Revit2021.Services
         private static string BuildCsv(IList<ReportRow> rows)
         {
             var builder = new StringBuilder();
-            builder.AppendLine("object_id;layer;source_geometry_type;bbox_mm;volume_mm3;face_count;edge_count;local_classification;local_confidence;ai_used;ai_provider;ai_model;ai_recommendation;ai_confidence;final_method;result_status;created_element_id;message;exception;fallback_used;extrusion_failed_reason;validation_bbox_deviation_mm;validation_volume_deviation_percent");
+            builder.AppendLine("object_id;layer;source_geometry_type;bbox_mm;volume_mm3;face_count;edge_count;local_classification;local_confidence;ai_used;ai_provider;ai_model;ai_recommendation;ai_confidence;final_method;result_status;created_element_id;message;exception;fallback_used;extrusion_failed_reason;validation_bbox_deviation_mm;validation_volume_deviation_percent;mesh_source_triangle_count;mesh_created_triangle_count;mesh_skipped_triangle_count;mesh_source_vertex_count;mesh_source_normal_count;mesh_output_normal_count;mesh_source_normal_distribution;mesh_output_normal_distribution;mesh_creation_path;mesh_fallback_reason;mesh_freeform_failure_reason;mesh_direct_mesh_failure_reason;mesh_solid_face_count;mesh_freeform_planar_face_count;mesh_freeform_reference_face_count;mesh_boundary_edge_count;mesh_boundary_loop_count;mesh_non_manifold_edge_count;mesh_orientation_flip_count;mesh_orientation_conflict_count;mesh_planar_cap_count;mesh_non_planar_boundary_loop_count;mesh_open_boundary_chain_count;mesh_topology_repair_applied;mesh_topology_repair_failure_reason");
             foreach (ReportRow row in rows)
             {
                 builder.AppendLine(string.Join(";",
@@ -109,7 +134,32 @@ namespace FamilyConverter.Revit2021.Services
                     row.fallback_used,
                     Escape(row.extrusion_failed_reason),
                     row.validation_bbox_deviation_mm.ToString("0.###"),
-                    row.validation_volume_deviation_percent.ToString("0.###")));
+                    row.validation_volume_deviation_percent.ToString("0.###"),
+                    row.mesh_source_triangle_count,
+                    row.mesh_created_triangle_count,
+                    row.mesh_skipped_triangle_count,
+                    row.mesh_source_vertex_count,
+                    row.mesh_source_normal_count,
+                    row.mesh_output_normal_count,
+                    Escape(row.mesh_source_normal_distribution),
+                    Escape(row.mesh_output_normal_distribution),
+                    Escape(row.mesh_creation_path),
+                    Escape(row.mesh_fallback_reason),
+                    Escape(row.mesh_freeform_failure_reason),
+                    Escape(row.mesh_direct_mesh_failure_reason),
+                    row.mesh_solid_face_count,
+                    row.mesh_freeform_planar_face_count,
+                    row.mesh_freeform_reference_face_count,
+                    row.mesh_boundary_edge_count,
+                    row.mesh_boundary_loop_count,
+                    row.mesh_non_manifold_edge_count,
+                    row.mesh_orientation_flip_count,
+                    row.mesh_orientation_conflict_count,
+                    row.mesh_planar_cap_count,
+                    row.mesh_non_planar_boundary_loop_count,
+                    row.mesh_open_boundary_chain_count,
+                    row.mesh_topology_repair_applied,
+                    Escape(row.mesh_topology_repair_failure_reason)));
             }
 
             return builder.ToString();

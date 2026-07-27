@@ -118,6 +118,8 @@
     <Compile Include="Services\LayerService.cs" />
     <Compile Include="Services\LocalRuleGeometryAdvisor.cs" />
     <Compile Include="Services\LoggingService.cs" />
+    <Compile Include="Services\MeshDirectShapeCreationService.cs" />
+    <Compile Include="Services\MeshTopologyRepairService.cs" />
     <Compile Include="Services\ReportService.cs" />
     <Compile Include="Services\SelectionService.cs" />
     <Compile Include="Services\SubcategoryService.cs" />

@@ -4,14 +4,14 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 
-namespace DWGConverter.FamilyGeometry.Installer
+namespace DWGConverter.FamilyGeometry.Revit2025.Installer
 {
     internal static class Program
     {
         private const string ProductName = "DWG Converter - Family Geometry";
-        private const string DllFileName = "FamilyConverter.Revit2021.dll";
+        private const string DllFileName = "FamilyConverter.Revit2025.dll";
         private const string AddinFileName = "FamilyConverter.addin";
-        private const string RevitVersion = "2021";
+        private const string RevitVersion = "2025";
 
         [STAThread]
         private static int Main(string[] args)
@@ -100,7 +100,7 @@ namespace DWGConverter.FamilyGeometry.Installer
 
             if (string.IsNullOrWhiteSpace(resourceName))
             {
-                throw new InvalidOperationException("Embedded add-in DLL was not found.");
+                throw new InvalidOperationException("Embedded Revit 2025 add-in DLL was not found.");
             }
 
             using (Stream source = assembly.GetManifestResourceStream(resourceName))
@@ -127,7 +127,7 @@ namespace DWGConverter.FamilyGeometry.Installer
                 "    <Name>DWG Converter - Family Geometry</Name>" + Environment.NewLine +
                 "    <Assembly>" + escapedDllPath + "</Assembly>" + Environment.NewLine +
                 "    <AddInId>80B7093F-8B7F-4FC0-B3D2-977FB234B6C4</AddInId>" + Environment.NewLine +
-                "    <FullClassName>FamilyConverter.Revit2021.App</FullClassName>" + Environment.NewLine +
+                "    <FullClassName>FamilyConverter.Revit2025.App</FullClassName>" + Environment.NewLine +
                 "    <VendorId>DWGC</VendorId>" + Environment.NewLine +
                 "    <VendorDescription>DWG Converter</VendorDescription>" + Environment.NewLine +
                 "  </AddIn>" + Environment.NewLine +

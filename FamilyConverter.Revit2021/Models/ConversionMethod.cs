@@ -5,6 +5,7 @@ namespace FamilyConverter.Revit2021.Models
         None,
         Extrusion,
         FreeForm,
+        DirectShape,
         Skip
     }
 }
