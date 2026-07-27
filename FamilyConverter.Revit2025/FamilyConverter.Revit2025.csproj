@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <AssemblyName>FamilyConverter.Revit2025</AssemblyName>
+    <RootNamespace>FamilyConverter.Revit2025</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>C:\Program Files\Autodesk\Revit 2025\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2025\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2025\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="App.cs" />
+    <Compile Include="Services\UnitService.cs" />
+    <Compile Include="..\FamilyConverter.Revit2021\**\*.cs"
+             Exclude="..\FamilyConverter.Revit2021\bin\**;..\FamilyConverter.Revit2021\obj\**;..\FamilyConverter.Revit2021\App.cs;..\FamilyConverter.Revit2021\Services\UnitService.cs;..\FamilyConverter.Revit2021\DrawingToFamily\**" />
+    <Page Include="..\FamilyConverter.Revit2021\UI\*.xaml" />
+    <EmbeddedResource Include="..\FamilyConverter.Revit2021\Assets\Ribbon\simple-convert.png">
+      <Link>Assets\Ribbon\simple-convert.png</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\FamilyConverter.Revit2021\Assets\Ribbon\turbo-freeform.png">
+      <Link>Assets\Ribbon\turbo-freeform.png</Link>
+    </EmbeddedResource>
+    <None Include="FamilyConverter.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

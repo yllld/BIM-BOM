@@ -1,0 +1,27 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4-00C04F79EFBC}") = "FamilyConverter.Revit2025", "FamilyConverter.Revit2025\FamilyConverter.Revit2025.csproj", "{0D988296-ED18-4D3C-B143-19ACF41E8A41}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4-00C04F79EFBC}") = "DWGConverter.FamilyGeometry.Revit2025.Installer", "DWGConverter.FamilyGeometry.Revit2025.Installer\DWGConverter.FamilyGeometry.Revit2025.Installer.csproj", "{029F7438-2CB5-43B4-8BD8-C2CB6F548791}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0D988296-ED18-4D3C-B143-19ACF41E8A41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D988296-ED18-4D3C-B143-19ACF41E8A41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D988296-ED18-4D3C-B143-19ACF41E8A41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D988296-ED18-4D3C-B143-19ACF41E8A41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{029F7438-2CB5-43B4-8BD8-C2CB6F548791}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{029F7438-2CB5-43B4-8BD8-C2CB6F548791}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{029F7438-2CB5-43B4-8BD8-C2CB6F548791}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{029F7438-2CB5-43B4-8BD8-C2CB6F548791}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
