@@ -12,6 +12,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.AutoCAD2022.In
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.Tests", "DWGOptimizer.Tests\DWGOptimizer.Tests.csproj", "{3C20866E-9A11-45EB-8907-9D80B97D49AB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.Engine.AutoCAD2022", "DWGOptimizer.Engine.AutoCAD2022\DWGOptimizer.Engine.AutoCAD2022.csproj", "{07A349A2-87D2-4BAC-B2CD-B8983956C981}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.CoreConsole2022", "DWGOptimizer.CoreConsole2022\DWGOptimizer.CoreConsole2022.csproj", "{65A5567B-36DF-4E99-BD4A-5638889748CB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,5 +42,13 @@ Global
 		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07A349A2-87D2-4BAC-B2CD-B8983956C981}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07A349A2-87D2-4BAC-B2CD-B8983956C981}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07A349A2-87D2-4BAC-B2CD-B8983956C981}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07A349A2-87D2-4BAC-B2CD-B8983956C981}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65A5567B-36DF-4E99-BD4A-5638889748CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65A5567B-36DF-4E99-BD4A-5638889748CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65A5567B-36DF-4E99-BD4A-5638889748CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65A5567B-36DF-4E99-BD4A-5638889748CB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

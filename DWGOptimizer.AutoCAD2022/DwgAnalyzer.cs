@@ -273,7 +273,7 @@ namespace DWGOptimizer.AutoCAD2022
 
         private static void CollectXrefs(Database database, Transaction transaction, BlockTable blockTable, AnalysisReport report)
         {
-            foreach (ObjectId id in blockTable)
+            foreach (ObjectId id in GetValidSymbolIds(blockTable))
             {
                 var block = transaction.GetObject(id, OpenMode.ForRead, false) as BlockTableRecord;
                 if (block == null || !block.IsFromExternalReference)
@@ -306,6 +306,35 @@ namespace DWGOptimizer.AutoCAD2022
             }
         }
 
+        internal static IList<ObjectId> GetValidSymbolIds(SymbolTable table)
+        {
+            var result = new List<ObjectId>();
+            SymbolTableEnumerator enumerator = table.GetEnumerator();
+            while (true)
+            {
+                bool moved;
+                try { moved = enumerator.MoveNext(); }
+                catch (Autodesk.AutoCAD.Runtime.Exception ex)
+                {
+                    if (ex.ErrorStatus == Autodesk.AutoCAD.Runtime.ErrorStatus.InvalidIndex
+                        || ex.ErrorStatus == Autodesk.AutoCAD.Runtime.ErrorStatus.WasErased) continue;
+                    throw;
+                }
+                if (!moved) break;
+                try
+                {
+                    ObjectId id = enumerator.Current;
+                    if (!id.IsNull && !id.IsErased) result.Add(id);
+                }
+                catch (Autodesk.AutoCAD.Runtime.Exception ex)
+                {
+                    if (ex.ErrorStatus != Autodesk.AutoCAD.Runtime.ErrorStatus.InvalidIndex
+                        && ex.ErrorStatus != Autodesk.AutoCAD.Runtime.ErrorStatus.WasErased) throw;
+                }
+            }
+            return result;
+        }
+
         internal static bool IsSamePath(string candidate, string source)
         {
             if (string.IsNullOrWhiteSpace(candidate) || string.IsNullOrWhiteSpace(source)) return false;
@@ -322,7 +351,8 @@ namespace DWGOptimizer.AutoCAD2022
 
         public static string ComputeSha256(string path)
         {
-            using (var stream = File.OpenRead(path))
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete, 1024 * 1024, FileOptions.SequentialScan))
             using (var sha = SHA256.Create())
             {
                 return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty);

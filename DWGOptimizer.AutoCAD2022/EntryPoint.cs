@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
@@ -94,9 +95,11 @@ namespace DWGOptimizer.AutoCAD2022
                 string queueDir = Path.Combine(OutputPathService.GetQueuesDirectory(),
                     DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8));
                 Directory.CreateDirectory(queueDir);
+                string workerPlugin = Path.Combine(installDir, "DWGOptimizer.CoreConsole2022.dll");
+                if (!File.Exists(workerPlugin)) throw new FileNotFoundException("Не найден Core Console worker.", workerPlugin);
                 var manifest = new BatchManifest
                 {
-                    PluginPath = Assembly.GetExecutingAssembly().Location,
+                    PluginPath = workerPlugin,
                     AutoCadCoreConsolePath = @"C:\Program Files\Autodesk\AutoCAD 2022\accoreconsole.exe"
                 };
                 foreach (string file in dialog.FileNames)
@@ -127,29 +130,6 @@ namespace DWGOptimizer.AutoCAD2022
             Process.Start(new ProcessStartInfo("explorer.exe", "\"" + path + "\"") { UseShellExecute = true });
         }
 
-        [CommandMethod(ProductInfo.CommandWorker, CommandFlags.Session)]
-        public void Worker()
-        {
-            string jobPath = Environment.GetEnvironmentVariable("DWG_OPTIMIZER_JOB");
-            if (string.IsNullOrWhiteSpace(jobPath) || !File.Exists(jobPath)) throw new InvalidOperationException("DWG_OPTIMIZER_JOB не задан.");
-            BatchJob job = JsonFile.Read<BatchJob>(jobPath);
-            Document document = AcApp.DocumentManager.MdiActiveDocument;
-            try
-            {
-                var analysis = new DwgAnalyzer().Analyze(document.Database, job.SourcePath);
-                OptimizationReport result = new DwgOptimizerService().Optimize(document.Database, job.SourcePath, analysis, job.Request);
-                JsonFile.Write(job.StatusPath, new BatchJobStatus
-                {
-                    JobId = job.Id, State = result.Success ? "Completed" : "Failed",
-                    Message = string.Join("; ", result.Errors), OutputPath = result.OutputPath, UpdatedAtUtc = DateTime.UtcNow
-                });
-            }
-            catch (System.Exception ex)
-            {
-                JsonFile.Write(job.StatusPath, new BatchJobStatus { JobId = job.Id, State = "Failed", Message = ex.ToString(), UpdatedAtUtc = DateTime.UtcNow });
-                throw;
-            }
-        }
     }
 
     internal static class SelectionSnapshot
@@ -165,6 +145,9 @@ namespace DWGOptimizer.AutoCAD2022
 
     internal static class RibbonBuilder
     {
+        private static readonly BitmapImage SmallIcon = LoadIcon(16);
+        private static readonly BitmapImage LargeIcon = LoadIcon(32);
+
         public static void EnsureRibbon()
         {
             RibbonControl ribbon = ComponentManager.Ribbon;
@@ -189,9 +172,21 @@ namespace DWGOptimizer.AutoCAD2022
             return new RibbonButton
             {
                 Text = text, ShowText = true, Size = RibbonItemSize.Large,
+                ShowImage = true, Image = SmallIcon, LargeImage = LargeIcon,
                 Orientation = System.Windows.Controls.Orientation.Vertical,
                 CommandHandler = new RibbonHandler(command)
             };
+        }
+
+        private static BitmapImage LoadIcon(int size)
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.UriSource = new Uri("pack://application:,,,/DWGOptimizer.AutoCAD2022;component/Assets/financial-growth-analysis-" + size + ".png", UriKind.Absolute);
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.EndInit();
+            image.Freeze();
+            return image;
         }
     }
 

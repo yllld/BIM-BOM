@@ -210,7 +210,7 @@ namespace DWGOptimizer.AutoCAD2022
 
         private static void RemovePaperSpaceLayouts(Database database, OptimizationReport report)
         {
-            int removed = 0;
+            int layoutsFound = 0;
             using (Transaction transaction = database.TransactionManager.StartTransaction())
             {
                 var layouts = (DBDictionary)transaction.GetObject(database.LayoutDictionaryId, OpenMode.ForRead);
@@ -218,16 +218,13 @@ namespace DWGOptimizer.AutoCAD2022
                 {
                     var layout = transaction.GetObject(entry.Value, OpenMode.ForRead, false) as Layout;
                     if (layout == null || layout.ModelType) continue;
-                    ObjectId blockId = layout.BlockTableRecordId;
-                    layout.UpgradeOpen();
-                    layout.Erase();
-                    var block = transaction.GetObject(blockId, OpenMode.ForWrite, false) as BlockTableRecord;
-                    if (block != null && !block.IsErased) block.Erase();
-                    removed++;
+                    layoutsFound++;
                 }
                 transaction.Commit();
             }
-            report.Operations.Add(Applied("REMOVE_LAYOUTS", "Удалить Paper Space", removed, "Удалено листов: " + removed + "."));
+            report.Operations.Add(Skipped("REMOVE_LAYOUTS", "Исключить Paper Space",
+                "Обработка ограничена Model Space. Листы сохранены в копии (" + layoutsFound
+                + "), поскольку физическое удаление Layout через side Database повреждает таблицу блоков AutoCAD 2022."));
         }
 
         private static void CleanSolids(Database database, OptimizationReport report, double maxVolumeDeviationPercent, double maxBoundsDeviationMm)
@@ -284,14 +281,32 @@ namespace DWGOptimizer.AutoCAD2022
         {
             int converted = 0;
             int skipped = 0;
+            const int maxFacesPerMesh = 25000;
+            const long maxModelFacesForAutomaticConversion = 250000;
+            const long conversionFaceBudget = 75000;
+            long attemptedFaces = 0;
             double tolerance = GeometrySupport.MillimetersToDrawingUnits(maxDeviationMm, database.Insunits);
             using (Transaction transaction = database.TransactionManager.StartTransaction())
             {
                 var blockTable = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
                 var modelSpace = (BlockTableRecord)transaction.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
-                foreach (SubDMesh mesh in GetModelSpaceEntities<SubDMesh>(database, transaction).ToList())
+                List<SubDMesh> meshes = GetModelSpaceEntities<SubDMesh>(database, transaction).ToList();
+                long totalFaces = meshes.Sum(x => (long)x.NumberOfFaces);
+                if (totalFaces > maxModelFacesForAutomaticConversion)
                 {
-                    if (!mesh.Watertight)
+                    skipped = meshes.Count;
+                    transaction.Commit();
+                    report.Operations.Add(Skipped("MESH_TO_SOLID", "Преобразовать замкнутые Mesh в Solid",
+                        "Набор содержит " + totalFaces.ToString("N0") + " граней. Автоматический Mesh→Solid пропущен для сохранения быстродействия; исходные Mesh сохранены."));
+                    return;
+                }
+
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                foreach (SubDMesh mesh in meshes.OrderBy(x => x.NumberOfFaces))
+                {
+                    int faces = mesh.NumberOfFaces;
+                    if (!mesh.Watertight || faces > maxFacesPerMesh
+                        || attemptedFaces + faces > conversionFaceBudget || stopwatch.Elapsed > TimeSpan.FromSeconds(20))
                     {
                         skipped++;
                         continue;
@@ -299,6 +314,7 @@ namespace DWGOptimizer.AutoCAD2022
 
                     try
                     {
+                        attemptedFaces += faces;
                         BoundsInfo beforeBounds = GeometrySupport.ToBounds(mesh.GeometricExtents, Matrix3d.Identity);
                         Solid3d solid = mesh.ConvertToSolid(false, true);
                         BoundsInfo afterBounds = GeometrySupport.ToBounds(solid.GeometricExtents, Matrix3d.Identity);
@@ -554,9 +570,17 @@ namespace DWGOptimizer.AutoCAD2022
         {
             var table = transaction.GetObject(tableId, OpenMode.ForRead, false) as SymbolTable;
             if (table == null) return;
-            foreach (ObjectId id in table)
+            foreach (ObjectId id in DwgAnalyzer.GetValidSymbolIds(table))
             {
-                if (predicate == null || predicate(id)) result.Add(id);
+                if (id.IsErased) continue;
+                try
+                {
+                    if (predicate == null || predicate(id)) result.Add(id);
+                }
+                catch (Autodesk.AutoCAD.Runtime.Exception ex)
+                {
+                    if (ex.ErrorStatus != Autodesk.AutoCAD.Runtime.ErrorStatus.WasErased) throw;
+                }
             }
         }
 

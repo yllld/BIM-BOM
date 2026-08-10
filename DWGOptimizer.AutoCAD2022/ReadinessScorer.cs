@@ -17,6 +17,8 @@ namespace DWGOptimizer.AutoCAD2022
 
             report.RecommendedProfile = report.Counts.MeshFaces > 1000000 || report.Counts.TotalEntities > 200000
                 ? OptimizationProfile.Aggressive
+                : report.Counts.MeshFaces > 250000
+                    ? OptimizationProfile.Balanced
                 : report.Counts.Annotation + report.Counts.Curves2d > report.Counts.TotalEntities / 3
                     ? OptimizationProfile.Balanced
                     : OptimizationProfile.Safe;

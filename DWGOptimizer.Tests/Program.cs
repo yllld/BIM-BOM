@@ -21,6 +21,7 @@ namespace DWGOptimizer.Tests
             Run("xref transforms", TestXrefTransforms);
             Run("xref paths", TestXrefPaths);
             Run("json", TestJson);
+            Run("hash open drawing", TestHashOpenDrawing);
             Run("unique output names", TestUniqueNames);
             Console.WriteLine(_failed == 0 ? "All unit tests passed." : _failed + " unit test(s) failed.");
             return _failed == 0 ? 0 : 1;
@@ -102,6 +103,21 @@ namespace DWGOptimizer.Tests
                 if (first == second || !second.EndsWith("_2.dwg", StringComparison.OrdinalIgnoreCase)) throw new Exception("Collision suffix failed.");
             }
             finally { Directory.Delete(root, true); }
+        }
+
+        private static void TestHashOpenDrawing()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "dwgoptimizer-lock-" + Guid.NewGuid().ToString("N") + ".dwg");
+            File.WriteAllBytes(path, new byte[] { 1, 2, 3, 4 });
+            try
+            {
+                using (var activeDrawing = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+                {
+                    string hash = DwgAnalyzer.ComputeSha256(path);
+                    if (hash.Length != 64) throw new Exception("SHA-256 was not calculated.");
+                }
+            }
+            finally { if (File.Exists(path)) File.Delete(path); }
         }
 
         private static void Run(string name, Action action)

@@ -9,7 +9,11 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="AssemblyAccess.cs;DwgAnalyzer.cs;DwgOptimizerService.cs;GeometrySupport.cs;OutputPathService.cs;ProductInfo.cs;ReadinessScorer.cs;ReportWriter.cs" />
+    <Resource Include="Assets\financial-growth-analysis-16.png" />
+    <Resource Include="Assets\financial-growth-analysis-32.png" />
     <ProjectReference Include="..\DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj" />
+    <ProjectReference Include="..\DWGOptimizer.Engine.AutoCAD2022\DWGOptimizer.Engine.AutoCAD2022.csproj" />
     <Reference Include="AcCoreMgd">
       <HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcCoreMgd.dll</HintPath>
       <Private>false</Private>

@@ -10,9 +10,13 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\DWGOptimizer.AutoCAD2022\DWGOptimizer.AutoCAD2022.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\DWGOptimizer.Engine.AutoCAD2022\DWGOptimizer.Engine.AutoCAD2022.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\DWGOptimizer.CoreConsole2022\DWGOptimizer.CoreConsole2022.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\DWGOptimizer.BatchRunner\DWGOptimizer.BatchRunner.csproj" ReferenceOutputAssembly="false" />
     <EmbeddedResource Include="..\DWGOptimizer.AutoCAD2022\bin\$(Configuration)\net48\DWGOptimizer.AutoCAD2022.dll" LogicalName="Payload.DWGOptimizer.AutoCAD2022.dll" />
     <EmbeddedResource Include="..\DWGOptimizer.Contracts\bin\$(Configuration)\net48\DWGOptimizer.Contracts.dll" LogicalName="Payload.DWGOptimizer.Contracts.dll" />
+    <EmbeddedResource Include="..\DWGOptimizer.Engine.AutoCAD2022\bin\$(Configuration)\net48\DWGOptimizer.Engine.AutoCAD2022.dll" LogicalName="Payload.DWGOptimizer.Engine.AutoCAD2022.dll" />
+    <EmbeddedResource Include="..\DWGOptimizer.CoreConsole2022\bin\$(Configuration)\net48\DWGOptimizer.CoreConsole2022.dll" LogicalName="Payload.DWGOptimizer.CoreConsole2022.dll" />
     <EmbeddedResource Include="..\DWGOptimizer.BatchRunner\bin\$(Configuration)\net48\DWGOptimizer.BatchRunner.exe" LogicalName="Payload.DWGOptimizer.BatchRunner.exe" />
   </ItemGroup>
   <Target Name="CopyInstaller" AfterTargets="Build">
