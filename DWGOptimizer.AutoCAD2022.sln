@@ -1,0 +1,42 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.Contracts", "DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj", "{A3F0D4F7-565C-4C89-A60E-5A45D7A1EA01}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.AutoCAD2022", "DWGOptimizer.AutoCAD2022\DWGOptimizer.AutoCAD2022.csproj", "{B74AF750-744E-4AA8-9FD1-481102D30B02}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.BatchRunner", "DWGOptimizer.BatchRunner\DWGOptimizer.BatchRunner.csproj", "{BB8E4956-33DF-4756-B187-784730A42703}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.AutoCAD2022.Installer", "DWGOptimizer.AutoCAD2022.Installer\DWGOptimizer.AutoCAD2022.Installer.csproj", "{DC71ED46-55B1-43EF-9F82-1058BE014304}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DWGOptimizer.Tests", "DWGOptimizer.Tests\DWGOptimizer.Tests.csproj", "{3C20866E-9A11-45EB-8907-9D80B97D49AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A3F0D4F7-565C-4C89-A60E-5A45D7A1EA01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3F0D4F7-565C-4C89-A60E-5A45D7A1EA01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3F0D4F7-565C-4C89-A60E-5A45D7A1EA01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3F0D4F7-565C-4C89-A60E-5A45D7A1EA01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B74AF750-744E-4AA8-9FD1-481102D30B02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B74AF750-744E-4AA8-9FD1-481102D30B02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B74AF750-744E-4AA8-9FD1-481102D30B02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B74AF750-744E-4AA8-9FD1-481102D30B02}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB8E4956-33DF-4756-B187-784730A42703}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB8E4956-33DF-4756-B187-784730A42703}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB8E4956-33DF-4756-B187-784730A42703}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB8E4956-33DF-4756-B187-784730A42703}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC71ED46-55B1-43EF-9F82-1058BE014304}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC71ED46-55B1-43EF-9F82-1058BE014304}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC71ED46-55B1-43EF-9F82-1058BE014304}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC71ED46-55B1-43EF-9F82-1058BE014304}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C20866E-9A11-45EB-8907-9D80B97D49AB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
