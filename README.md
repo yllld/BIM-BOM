@@ -2,7 +2,9 @@
 
 DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
 
-Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
+Этот README относится к основной ветке `main` и стабильной сборке Revit 2021 на .NET Framework 4.8. Сборка Revit 2025 находится в ветке `revit-2025`, а изолированная разработка команды `2D Drawing to Family` — в ветке `2d-converter`.
+
+Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает `ImportInstance` и запускает команду `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
 
 ## Ограничения MVP
 
