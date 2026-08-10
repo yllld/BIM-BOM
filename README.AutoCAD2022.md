@@ -42,7 +42,7 @@
 & 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe' DWGOptimizer.AutoCAD2022.sln /restore /p:Configuration=Release
 ```
 
-Ссылки на `AcCoreMgd`, `AcDbMgd`, `AcMgd`, `AcDbMgdBrep` и `AdWindows` берутся из AutoCAD 2022 и не копируются в bundle.
+Ссылки на `AcCoreMgd`, `AcDbMgd`, `AcMgd`, `AcDbMgdBrep` и `AdWindows` берутся из AutoCAD 2022 и не копируются в bundle. Для AutoCAD 2021 предусмотрены отдельные сборки и установщик, описанные в [README.AutoCAD2021.md](README.AutoCAD2021.md).
 
 ## Текущие ограничения MVP
 

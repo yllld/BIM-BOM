@@ -1,6 +1,6 @@
 # DWG Converter - Family Geometry
 
-> В этой feature-ветке также находится отдельный плагин подготовки DWG для AutoCAD 2022. Его установка, команды, профили и ограничения описаны в [README.AutoCAD2022.md](README.AutoCAD2022.md).
+> В этой feature-ветке также находится отдельный плагин подготовки DWG для AutoCAD 2021 и 2022. Установка AutoCAD 2021 описана в [README.AutoCAD2021.md](README.AutoCAD2021.md), команды, профили и ограничения — в [README.AutoCAD2022.md](README.AutoCAD2022.md).
 
 DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств, может самостоятельно импортировать выбранный файл САПР и преобразует его 3D-геометрию в геометрию Revit.
 

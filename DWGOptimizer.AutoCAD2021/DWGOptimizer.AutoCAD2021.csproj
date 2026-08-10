@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>DWGOptimizer.AutoCAD2021</AssemblyName>
+    <RootNamespace>DWGOptimizer.AutoCAD2022</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\AnalysisWindow.cs" Link="AnalysisWindow.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\BatchMonitorWindow.cs" Link="BatchMonitorWindow.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\BatchOptionsWindow.cs" Link="BatchOptionsWindow.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\EntryPoint.cs" Link="EntryPoint.cs" />
+    <Resource Include="..\DWGOptimizer.AutoCAD2022\Assets\financial-growth-analysis-16.png" Link="Assets\financial-growth-analysis-16.png" />
+    <Resource Include="..\DWGOptimizer.AutoCAD2022\Assets\financial-growth-analysis-32.png" Link="Assets\financial-growth-analysis-32.png" />
+    <ProjectReference Include="..\DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj" />
+    <ProjectReference Include="..\DWGOptimizer.Engine.AutoCAD2021\DWGOptimizer.Engine.AutoCAD2021.csproj" />
+    <PackageReference Include="AutoCAD.NET" Version="24.0.0" PrivateAssets="all" ExcludeAssets="runtime" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+</Project>

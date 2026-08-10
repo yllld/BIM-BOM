@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>DWGOptimizer.Engine.AutoCAD2021</AssemblyName>
+    <RootNamespace>DWGOptimizer.AutoCAD2022</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <DefineConstants>$(DefineConstants);AUTOCAD2021</DefineConstants>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\AssemblyAccess.cs" Link="AssemblyAccess.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\DwgAnalyzer.cs" Link="DwgAnalyzer.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\DwgOptimizerService.cs" Link="DwgOptimizerService.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\GeometrySupport.cs" Link="GeometrySupport.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\OutputPathService.cs" Link="OutputPathService.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\ProductInfo.cs" Link="ProductInfo.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\ReadinessScorer.cs" Link="ReadinessScorer.cs" />
+    <Compile Include="..\DWGOptimizer.AutoCAD2022\ReportWriter.cs" Link="ReportWriter.cs" />
+    <ProjectReference Include="..\DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj" />
+    <PackageReference Include="AutoCAD.NET.Model" Version="24.0.0" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="24.0.0" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

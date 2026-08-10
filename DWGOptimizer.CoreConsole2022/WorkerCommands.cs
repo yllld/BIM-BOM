@@ -5,9 +5,9 @@ using Autodesk.AutoCAD.Runtime;
 using DWGOptimizer.AutoCAD2022;
 using DWGOptimizer.Contracts;
 
-[assembly: CommandClass(typeof(DWGOptimizer.CoreConsole2022.WorkerCommands))]
+[assembly: CommandClass(typeof(DWGOptimizer.CoreConsole.WorkerCommands))]
 
-namespace DWGOptimizer.CoreConsole2022
+namespace DWGOptimizer.CoreConsole
 {
     public sealed class WorkerCommands
     {

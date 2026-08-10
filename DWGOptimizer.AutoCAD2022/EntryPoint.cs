@@ -95,12 +95,12 @@ namespace DWGOptimizer.AutoCAD2022
                 string queueDir = Path.Combine(OutputPathService.GetQueuesDirectory(),
                     DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8));
                 Directory.CreateDirectory(queueDir);
-                string workerPlugin = Path.Combine(installDir, "DWGOptimizer.CoreConsole2022.dll");
+                string workerPlugin = Path.Combine(installDir, ProductInfo.CoreWorkerAssembly);
                 if (!File.Exists(workerPlugin)) throw new FileNotFoundException("Не найден Core Console worker.", workerPlugin);
                 var manifest = new BatchManifest
                 {
                     PluginPath = workerPlugin,
-                    AutoCadCoreConsolePath = @"C:\Program Files\Autodesk\AutoCAD 2022\accoreconsole.exe"
+                    AutoCadCoreConsolePath = ProductInfo.CoreConsolePath
                 };
                 foreach (string file in dialog.FileNames)
                 {
@@ -182,7 +182,7 @@ namespace DWGOptimizer.AutoCAD2022
         {
             var image = new BitmapImage();
             image.BeginInit();
-            image.UriSource = new Uri("pack://application:,,,/DWGOptimizer.AutoCAD2022;component/Assets/financial-growth-analysis-" + size + ".png", UriKind.Absolute);
+            image.UriSource = new Uri("pack://application:,,,/" + ProductInfo.UiAssemblyName + ";component/Assets/financial-growth-analysis-" + size + ".png", UriKind.Absolute);
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.EndInit();
             image.Freeze();

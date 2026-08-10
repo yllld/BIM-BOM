@@ -224,7 +224,7 @@ namespace DWGOptimizer.AutoCAD2022
             }
             report.Operations.Add(Skipped("REMOVE_LAYOUTS", "Исключить Paper Space",
                 "Обработка ограничена Model Space. Листы сохранены в копии (" + layoutsFound
-                + "), поскольку физическое удаление Layout через side Database повреждает таблицу блоков AutoCAD 2022."));
+                + "), поскольку физическое удаление Layout через side Database может повредить таблицу блоков AutoCAD."));
         }
 
         private static void CleanSolids(Database database, OptimizationReport report, double maxVolumeDeviationPercent, double maxBoundsDeviationMm)
