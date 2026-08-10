@@ -25,5 +25,30 @@ namespace FamilyConverter.Revit2021.Models
         public string extrusion_failed_reason { get; set; }
         public double validation_bbox_deviation_mm { get; set; }
         public double validation_volume_deviation_percent { get; set; }
+        public int mesh_source_triangle_count { get; set; }
+        public int mesh_created_triangle_count { get; set; }
+        public int mesh_skipped_triangle_count { get; set; }
+        public int mesh_source_vertex_count { get; set; }
+        public int mesh_source_normal_count { get; set; }
+        public int mesh_output_normal_count { get; set; }
+        public string mesh_source_normal_distribution { get; set; }
+        public string mesh_output_normal_distribution { get; set; }
+        public string mesh_creation_path { get; set; }
+        public string mesh_fallback_reason { get; set; }
+        public string mesh_freeform_failure_reason { get; set; }
+        public string mesh_direct_mesh_failure_reason { get; set; }
+        public int mesh_solid_face_count { get; set; }
+        public int mesh_freeform_planar_face_count { get; set; }
+        public int mesh_freeform_reference_face_count { get; set; }
+        public int mesh_boundary_edge_count { get; set; }
+        public int mesh_boundary_loop_count { get; set; }
+        public int mesh_non_manifold_edge_count { get; set; }
+        public int mesh_orientation_flip_count { get; set; }
+        public int mesh_orientation_conflict_count { get; set; }
+        public int mesh_planar_cap_count { get; set; }
+        public int mesh_non_planar_boundary_loop_count { get; set; }
+        public int mesh_open_boundary_chain_count { get; set; }
+        public bool mesh_topology_repair_applied { get; set; }
+        public string mesh_topology_repair_failure_reason { get; set; }
     }
 }

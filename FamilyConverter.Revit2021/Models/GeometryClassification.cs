@@ -9,6 +9,7 @@ namespace FamilyConverter.Revit2021.Models
         ProfileLike,
         CylinderLike,
         Complex,
+        Mesh,
         MeshUnsupported,
         Invalid
     }
