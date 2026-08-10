@@ -29,6 +29,31 @@ namespace FamilyConverter.Revit2021.Models
         public string ExtrusionFailedReason { get; set; }
         public double ValidationBoundingBoxDeviationMm { get; set; }
         public double ValidationVolumeDeviationPercent { get; set; }
+        public int MeshSourceTriangleCount { get; set; }
+        public int MeshCreatedTriangleCount { get; set; }
+        public int MeshSkippedTriangleCount { get; set; }
+        public int MeshSourceVertexCount { get; set; }
+        public int MeshSourceNormalCount { get; set; }
+        public int MeshOutputNormalCount { get; set; }
+        public string MeshSourceNormalDistribution { get; set; }
+        public string MeshOutputNormalDistribution { get; set; }
+        public string MeshCreationPath { get; set; }
+        public string MeshFallbackReason { get; set; }
+        public string MeshFreeFormFailureReason { get; set; }
+        public string MeshDirectMeshFailureReason { get; set; }
+        public int MeshSolidFaceCount { get; set; }
+        public int MeshFreeFormPlanarFaceCount { get; set; }
+        public int MeshFreeFormReferenceFaceCount { get; set; }
+        public int MeshBoundaryEdgeCount { get; set; }
+        public int MeshBoundaryLoopCount { get; set; }
+        public int MeshNonManifoldEdgeCount { get; set; }
+        public int MeshOrientationFlipCount { get; set; }
+        public int MeshOrientationConflictCount { get; set; }
+        public int MeshPlanarCapCount { get; set; }
+        public int MeshNonPlanarBoundaryLoopCount { get; set; }
+        public int MeshOpenBoundaryChainCount { get; set; }
+        public bool MeshTopologyRepairApplied { get; set; }
+        public string MeshTopologyRepairFailureReason { get; set; }
         public IList<string> Warnings { get; private set; }
         public GeometryObjectInfo Source { get; set; }
     }

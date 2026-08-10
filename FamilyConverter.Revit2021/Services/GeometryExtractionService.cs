@@ -102,6 +102,16 @@ namespace FamilyConverter.Revit2021.Services
                     continue;
                 }
 
+                PolyLine polyLine = obj as PolyLine;
+                if (polyLine != null)
+                {
+                    if (options.CollectUnsupportedGeometry)
+                    {
+                        AddPolyLine(document, sourceId, polyLine, obj, currentTransform, result, ref index);
+                    }
+                    continue;
+                }
+
                 if (options.CollectUnsupportedGeometry)
                 {
                     AddUnknown(document, sourceId, obj, currentTransform, result, ref index);
@@ -272,6 +282,40 @@ namespace FamilyConverter.Revit2021.Services
             }
 
             result.Add(info);
+        }
+
+        private void AddPolyLine(
+            Document document,
+            ElementId sourceId,
+            PolyLine polyLine,
+            GeometryObject rawObject,
+            Transform transform,
+            IList<GeometryObjectInfo> result,
+            ref int index)
+        {
+            int coordinateCount = 0;
+            try
+            {
+                coordinateCount = polyLine.GetCoordinates().Count;
+            }
+            catch
+            {
+                coordinateCount = 0;
+            }
+
+            result.Add(new GeometryObjectInfo
+            {
+                SourceImportInstanceId = sourceId,
+                GeometryIndex = ++index,
+                GeometryType = "PolyLine",
+                Transform = transform,
+                PolyLine = polyLine,
+                RawObject = rawObject,
+                BoundingBox = GeometryUtils.GetPolyLineBoundingBox(polyLine, transform),
+                FaceCount = 0,
+                EdgeCount = Math.Max(0, coordinateCount - 1),
+                LayerName = _layerService.GetLayerName(document, rawObject)
+            });
         }
 
         private void AddUnknown(

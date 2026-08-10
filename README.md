@@ -1,192 +1,256 @@
 # DWG Converter - Family Geometry
 
-DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
+MVP Revit Add-in на C# / WPF для Autodesk Revit 2021. Плагин работает внутри редактора семейств и помогает получать нативную геометрию Revit из уже импортированных DWG.
 
-Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
+Для Autodesk Revit 2025 предусмотрена отдельная сборка на .NET 8 с командами `Simple Convert` и `Turbo FreeForm`.
 
-## Ограничения MVP
+Этот README относится к ветке `2d-converter`. Стабильная версия Revit 2021 находится в `main`, версия Revit 2025 — в `revit-2025`. Команда `2D Drawing to Family` разрабатывается изолированно и в сборку Revit 2025 не включена.
 
-- Простые призматические Solid преобразуются в нативные Revit Extrusion.
-- Сложные Solid могут быть перенесены как FreeFormElement, если включен fallback.
-- Mesh и Curve в MVP не преобразуются, но попадают в отчет как unsupported/skipped.
-- Нет пакетной обработки нескольких DWG.
-- Нет самостоятельного импорта DWG.
-- Нет параметризации размеров, создания типов семейств или параметров.
-- AI опционален и не нужен для локальной работы.
+Плагин не импортирует DWG сам. Пользователь импортирует DWG стандартными средствами Revit, выбирает `ImportInstance` и запускает нужную команду на панели:
 
-Важное ограничение: плагин не гарантирует преобразование любой 3D DWG-геометрии в редактируемые Revit Extrusion. Простые призматические тела преобразуются в нативные формы Revit. Сложные тела могут быть перенесены как FreeFormElement. Mesh-геометрия в MVP не преобразуется.
+```text
+BIM BOM -> DWG Converter - Family Geometry
+```
+
+## Команды
+
+- `Simple Convert` - основной режим для 3D DWG: Solid преобразуются в Extrusion/FreeFormElement; Mesh сначала пробуется как FreeFormElement с referenceable-гранями, открытые плоские контуры автоматически закрываются и повторно проверяются, а для небезопасной топологии сохраняется DirectShape fallback.
+- `Turbo FreeForm` - быстрый fallback-режим для тяжёлых 3D импортов.
+- `2D Drawing to Family` - инженерный MVP для 2D DWG без AI, OCR, ML и внешних API.
+- `Reports Folder` - открывает папку отчётов.
+
+Кнопка проверки масштаба для 2D режима не используется и не возвращается.
+
+## 2D Drawing to Family
+
+`2D Drawing to Family` строит черновую 3D RFA-заготовку из линий импортированного 2D DWG. Режим работает только с геометрией, которую отдаёт Revit API через выбранный `ImportInstance`.
+
+Сценарий:
+
+1. Откройте или создайте семейство Revit.
+2. Импортируйте 2D DWG.
+3. Выберите один `ImportInstance`.
+4. Запустите `2D Drawing to Family`.
+5. Проверьте таблицу слоёв DWG.
+6. При необходимости поменяйте роль слоя и включение слоя.
+7. Нажмите `Выбрать вид сверху` и укажите 4 точки рамки в Revit.
+8. Нажмите `Выбрать вид спереди` и укажите 4 точки.
+9. При необходимости выберите `Вид сбоку`.
+10. Нажмите `Переанализировать`.
+11. Нажмите `Построить`.
+
+После `Построить` команда больше не создает геометрию сразу. Сначала запускается пошаговый мастер:
+
+- шаг 1: показывает количество замкнутых, открытых и невалидных контуров в `Plan View`;
+- шаг 1A: если есть разомкнутые линии, спрашивает, замыкать ли их автоматически в пределах допуска;
+- шаг 2: показывает начало/конец выдавливания и размеры из `Plan`, `Front`, `Side`;
+- шаг 3: показывает найденные формы по линиям DWG: прямоугольники, квадраты, круги/почти круги, отверстия;
+- шаг 4: предлагает `только отчет`, `построить 1 самое крупное тело` или `построить все тела поэтапно`.
+
+Окно 2D режима показывает:
+
+- имя и ID импортированного DWG;
+- количество считанных объектов;
+- количество слоёв;
+- общий габарит DWG в мм;
+- таблицу слоёв с визуальной цветовой плашкой;
+- статус выбранных областей Plan / Front / Side;
+- количество объектов и размер каждой выбранной области;
+- сводку найденных контуров.
+
+В основном экране оставлены только две настройки:
+
+- `Геометрический допуск, мм` - по умолчанию `2`.
+- `Минимальный размер элемента, мм` - по умолчанию `10`.
+
+## Как строится 2D геометрия
+
+Новый режим больше не выбирает только один самый крупный контур. Он пытается построить максимум доступной геометрии:
+
+- читает `Line`, `Arc`, `Ellipse`, `NurbSpline`, `PolyLine` и другие `Curve`-объекты, которые Revit отдаёт из DWG;
+- группирует объекты по слоям;
+- предварительно классифицирует слои по имени, но пользователь может изменить роль вручную;
+- берёт линии внутри выбранных пользователем 4-точечных областей проекций;
+- находит все простые замкнутые и почти замкнутые контуры;
+- назначает `solid` и `void` по even-odd вложенности;
+- открытые, reference и невалидные контуры после подтверждения пользователя отправляются в Revit как `ModelCurve`/reference geometry;
+- сопоставляет Plan / Front / Side по ширине, глубине и высоте;
+- создаёт список `BuildCandidate` для всех валидных solid-контуров `Plan View`, а не для одного главного тела;
+- для каждого solid-кандидата сначала пробует точный `Extrusion` с внутренними void-петлями, затем откатывает управляемую ошибку и пробует точный `FreeFormElement`, затем безопасный bbox `FreeFormElement`;
+- `Front View` и `Side View` используются только для снятия высоты/глубины и сверки размеров, но не создают самостоятельные тела;
+- построение идет от крупных тел к меньшим; при выборе тестового режима создается только один самый крупный кандидат;
+- найденные круговые отверстия из Plan / Front / Side пробует строить как void extrusion;
+- использует аварийный `FALLBACK Plan bounding box` только если по build-кандидатам вообще ничего не удалось построить.
+
+Правила проекций:
+
+- `Plan View` даёт ширину и глубину.
+- `Front View` даёт ширину и высоту.
+- `Side View` опционален и помогает уточнить глубину/высоту.
+
+## Диагностика DWG перед построением
+
+Перед подтверждением построения `2D Drawing to Family` выполняет лёгкую диагностику внутренней копии геометрии DWG. Исходный `ImportInstance` не изменяется.
+
+Диагностика фиксирует:
+
+- дублирующиеся сегменты с одинаковыми или обратными конечными точками в пределах допуска;
+- микросегменты короче минимального размера элемента;
+- предупреждения, возникшие при чтении или трансформации кривых;
+- открытые и reference-контуры с оценкой зазора между концами;
+- invalid-контуры и причину, если она известна;
+- самопересечения замкнутых контуров по несоседним сегментам;
+- расхождения размеров между Plan / Front / Side;
+- подозрительный общий масштаб DWG меньше `10 мм` или больше `100000 мм`;
+- слишком тяжёлые DWG с большим количеством объектов.
+
+Каждая диагностическая запись содержит severity, код проблемы, слой, ID геометрии или контура, проекцию, числовое значение, допуск и рекомендуемое действие. Предупреждения и ошибки диагностики попадают в технический лог, итоговое окно и пользовательский отчёт.
+
+## Отчёты и логи
+
+Для команды `2D Drawing to Family` создаются два файла:
+
+```text
+%APPDATA%\DWG_Converter\Family_Geometry\logs\DrawingToFamily_Report_yyyyMMdd_HHmmss.txt
+%APPDATA%\DWG_Converter\Family_Geometry\logs\DrawingToFamily_Log_yyyyMMdd_HHmmss.log
+```
+
+Отчёт содержит:
+
+- Revit version, имя файла и семейства;
+- ID `ImportInstance`;
+- количество считанных объектов;
+- объекты внутри Plan / Front / Side;
+- таблицу слоёв с цветом, ролью и включением;
+- выбранные области проекций;
+- диагностику DWG: дубли, микросегменты, открытые/invalid-контуры, самопересечения, расхождения проекций и подозрительный масштаб;
+- найденные `solid`, `void`, `open/reference`, `invalid` контуры;
+- build candidates и confidence;
+- сколько создано solid extrusion;
+- сколько создано FreeForm elements;
+- сколько создано reference/model lines;
+- сколько кандидатов пропущено;
+- build coverage;
+- предупреждения, ошибки и факт использования `FALLBACK`.
+
+## Масштаб
+
+Отдельной проверки масштаба нет. Режим использует фактические координаты импортированной DWG-геометрии в Revit и показывает размеры в мм.
+
+Если итоговые размеры меньше `10 мм` или больше `100000 мм`, в отчёт добавляется предупреждение:
+
+```text
+Проверьте единицы импорта DWG. Отдельная проверка масштаба в MVP не используется.
+```
+
+## Ограничения 2D MVP
+
+MVP не читает текстовые размеры, MTEXT, выноски, OCR, ML и внешние AI API. Он не является полноценным CAD SDK и не обещает идеальную производственную BIM-модель.
+
+Сложные NURBS/сплайны аппроксимируются сегментами, если это возможно. Самопересекающиеся, плохие или незамкнутые контуры могут быть сохранены как reference lines или попасть в отчёт как skipped с причиной.
+
+Rollback и FreeForm fallback обрабатывают управляемые ошибки Revit API. Если Revit завершает процесс фатально на грязной CAD-геометрии, такой сбой невозможно откатить из add-in кода.
 
 ## Требования
 
 - Autodesk Revit 2021.
 - .NET Framework 4.8.
+- Для отдельной сборки 2025: Autodesk Revit 2025 и .NET 8 SDK.
 - Windows.
-- Visual Studio с поддержкой .NET Framework/WPF.
-- Newtonsoft.Json из установленного Revit 2021.
+- Visual Studio с поддержкой .NET Framework, .NET 8 и WPF.
+- `RevitAPI.dll`, `RevitAPIUI.dll`, `NewtonSoft.Json.dll` из установленного Revit 2021.
+- Для сборки 2025 — соответствующие библиотеки из установленного Revit 2025.
 
-Ссылки на `RevitAPI.dll`, `RevitAPIUI.dll` и `NewtonSoft.Json.dll` настроены на:
+Ожидаемый путь Revit API:
 
 ```text
 C:\Program Files\Autodesk\Revit 2021\
 ```
 
-`Copy Local` для Revit API выключен.
-
 ## Сборка
 
-1. Откройте `src/FamilyConverter.Revit2021.sln` в Visual Studio.
-2. Восстановите NuGet-пакеты.
-3. Соберите solution в конфигурации `Release`.
-4. Для ручной установки скопируйте DLL и `FamilyConverter.addin` в каталог add-in Revit 2021.
-
-Каталог установки манифеста:
+Откройте:
 
 ```text
-%APPDATA%\Autodesk\Revit\Addins\2021\
+src\FamilyConverter.Revit2021.sln
 ```
 
-В манифесте `FamilyConverter.addin` указан путь:
+Соберите solution в конфигурации `Release`.
 
-```text
-%APPDATA%\Autodesk\Revit\Addins\2021\FamilyConverter.Revit2021.dll
-```
-
-## Установщик
-
-Release-сборка создает единый EXE-установщик:
+Готовый installer:
 
 ```text
 DWGConverter.FamilyGeometry.Installer\bin\Release\DWGConverter-FamilyGeometry-Installer.exe
 ```
 
-Готовый собранный файл для скачивания хранится в:
+Копия для выдачи:
 
 ```text
 dist\DWGConverter-FamilyGeometry-Installer.exe
 ```
 
-Установщик не требует прав администратора. Он записывает DLL и `.addin` в:
+Installer устанавливает add-in в:
 
 ```text
 %APPDATA%\Autodesk\Revit\Addins\2021\
 ```
 
-Для тихой установки можно запустить:
+Тихая установка:
 
 ```text
 DWGConverter-FamilyGeometry-Installer.exe /quiet
 ```
 
-## Использование
+### Revit 2025: Simple Convert и Turbo FreeForm
 
-1. Откройте или создайте семейство Revit.
-2. Импортируйте 3D DWG стандартными средствами Revit.
-3. Переместите/поверните DWG как нужно.
-4. Выберите импортированный DWG-элемент.
-5. Запустите `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
-6. Проверьте профиль в основном окне. Настройки конвертации открываются через иконку шестеренки, AI-настройки - через иконку со звездой.
-7. Нажмите `Преобразовать`.
-8. Проверьте созданные формы и отчет.
-
-В обычном режиме длительные этапы показываются в отдельном небольшом окне прогресса.
-
-На панели также есть кнопка `Reports Folder`: она открывает папку отчетов для
-текущего семейства, а для несохраненного семейства - временную папку отчетов.
-Кнопки `Donate` и `Tech Support` пока являются заглушками под будущие ссылки.
-
-## Turbo FreeForm
-
-Для очень тяжелых импортированных DWG используйте:
+Откройте:
 
 ```text
-BIM BOM -> DWG Converter - Family Geometry -> Turbo FreeForm
+src\FamilyConverter.Revit2025.sln
 ```
 
-Режим намеренно грубее обычного, но быстрее:
-
-- без окна предварительного анализа всей геометрии;
-- без попыток `Extrusion`;
-- без AI;
-- без диагностики `Mesh`/`Curve`;
-- без чтения слоев DWG;
-- `Solid` создаются сразу как `FreeFormElement`;
-- отчеты JSON/CSV можно оставить включенными.
-
-Перед запуском Turbo открывается окно настроек. Главные пороги для упрощения
-семейства:
-
-- `Минимальный объем Solid, мм³` - Solid с меньшим объемом не создается.
-- `Минимальный максимальный габарит, мм` - Solid, у которого самый большой
-  размер меньше порога, не создается.
-- значение `0` отключает соответствующий порог.
-
-Проверку созданной геометрии по допускам габаритов/объема можно включить в этом
-же окне, но по умолчанию она выключена для скорости.
-
-Этот режим полезен, когда Revit зависает на больших DWG. Во время работы Revit
-может показывать `Не отвечает`; дождитесь завершения операции.
-
-## AI-конфиг
-
-AI-советник отключен по умолчанию. Плагин полноценно работает локально без AI.
-
-Путь по умолчанию:
+Соберите solution в конфигурации `Release`, затем опубликуйте single-file installer:
 
 ```text
-%APPDATA%\DWG_Converter\Family_Geometry\ai_config.json
+dotnet publish DWGConverter.FamilyGeometry.Revit2025.Installer\DWGConverter.FamilyGeometry.Revit2025.Installer.csproj -c Release
 ```
 
-Пример находится в `src/ai_config.example.json`. В нем нет реальных ключей. Реальный `ai_config.json` не должен попадать в репозиторий.
-
-Поддерживаются режимы:
-
-- `openai-compatible-chat-completions`
-- `generic-json-post`
-
-В AI отправляется только geometry passport: габариты, объем, сводка граней/ребер, локальная классификация и предупреждения. DWG и RFA не отправляются.
-
-## Отчеты
-
-Если семейство сохранено, отчеты создаются рядом с `.rfa` в папке:
+Отдельный installer:
 
 ```text
-DWG_Conversion_Reports
+DWGConverter.FamilyGeometry.Revit2025.Installer\bin\Release\net8.0-windows\win-x64\publish\DWGConverter-FamilyGeometry-Revit2025-Installer.exe
 ```
 
-Если семейство не сохранено:
+Копия для выдачи:
 
 ```text
-%TEMP%\DWG_Converter_Family_Geometry\
+dist\DWGConverter-FamilyGeometry-Revit2025-Installer.exe
 ```
 
-Создаются файлы:
+Installer устанавливает отдельную DLL и manifest в:
 
 ```text
-DWG_Conversion_Report_yyyyMMdd_HHmmss.json
-DWG_Conversion_Report_yyyyMMdd_HHmmss.csv
+%APPDATA%\Autodesk\Revit\Addins\2025\
 ```
 
-CSV использует разделитель `;` для удобства в русской локали Excel.
-
-## Логи
-
-Логи пишутся в:
+Тихая установка:
 
 ```text
-%APPDATA%\DWG_Converter\Family_Geometry\logs\
+DWGConverter-FamilyGeometry-Revit2025-Installer.exe /quiet
 ```
 
-API-ключи не логируются.
+## AI
+
+Новый режим `2D Drawing to Family` полностью исключает AI.
+
+AI-конфигурация может использоваться только существующим 3D режимом, если пользователь явно включает соответствующую опцию. DWG/RFA в AI не отправляются.
 
 ## License
 
 DWG Converter - Family Geometry is source-available, not open source.
 
-The public repository is licensed under the PolyForm Noncommercial License 1.0.0
-unless a separate written license is granted by the copyright holder.
+The public repository is licensed under the PolyForm Noncommercial License 1.0.0 unless a separate written license is granted by the copyright holder.
 
-Commercial use, including use in paid BIM/design/engineering workflows,
-redistribution, resale, sublicensing, or use in a competing product, requires a
-separate written commercial or beta license.
+Commercial use, including use in paid BIM/design/engineering workflows, redistribution, resale, sublicensing, or use in a competing product, requires a separate written commercial or beta license.
 
 See [LICENSE.md](LICENSE.md).

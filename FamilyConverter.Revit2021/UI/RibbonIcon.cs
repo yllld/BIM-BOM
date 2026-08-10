@@ -12,6 +12,7 @@ namespace FamilyConverter.Revit2021.UI
     {
         SimpleConvert,
         TurboFreeForm,
+        DrawingToFamily,
         ReportsFolder,
         Donate,
         Support
@@ -46,6 +47,8 @@ namespace FamilyConverter.Revit2021.UI
                     return "simple-convert.png";
                 case RibbonIconKind.TurboFreeForm:
                     return "turbo-freeform.png";
+                case RibbonIconKind.DrawingToFamily:
+                    return "convert-2d.png";
                 case RibbonIconKind.ReportsFolder:
                     return "reports-folder.png";
                 case RibbonIconKind.Donate:

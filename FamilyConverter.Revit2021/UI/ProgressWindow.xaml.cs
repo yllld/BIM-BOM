@@ -43,6 +43,33 @@ namespace FamilyConverter.Revit2021.UI
             Refresh();
         }
 
+        public void SetCustom(int index, int stageCount, double percent, string status, string detail)
+        {
+            if (stageCount < 1)
+            {
+                stageCount = 1;
+            }
+
+            if (index < 0)
+            {
+                index = 0;
+            }
+            else if (index >= stageCount)
+            {
+                index = stageCount - 1;
+            }
+
+            CurrentStatusText.Text = string.IsNullOrWhiteSpace(status)
+                ? "Выполняем операцию..."
+                : status;
+            SecondaryStatusText.Text = string.IsNullOrWhiteSpace(detail)
+                ? "Пожалуйста, подождите."
+                : detail;
+            StageText.Text = string.Format(CultureInfo.InvariantCulture, "Этап {0} из {1}", index + 1, stageCount);
+            UpdateProgress(percent);
+            Refresh();
+        }
+
         private void UpdateProgress(double value)
         {
             if (value < 0)

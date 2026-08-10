@@ -23,6 +23,7 @@ namespace FamilyConverter.Revit2021.Models
         public Solid Solid { get; set; }
         public Mesh Mesh { get; set; }
         public Curve Curve { get; set; }
+        public PolyLine PolyLine { get; set; }
         public GeometryObject RawObject { get; set; }
         public IList<string> Warnings { get; private set; }
 

@@ -20,7 +20,7 @@ namespace DWGConverter.FamilyGeometry.Installer
 
             try
             {
-                string addinsDirectory = GetAddinsDirectory();
+                string addinsDirectory = GetAddinsDirectory(args);
                 string dllPath = Path.Combine(addinsDirectory, DllFileName);
                 string addinPath = Path.Combine(addinsDirectory, AddinFileName);
 
@@ -72,8 +72,21 @@ namespace DWGConverter.FamilyGeometry.Installer
             return result == DialogResult.OK;
         }
 
-        private static string GetAddinsDirectory()
+        private static string GetAddinsDirectory(string[] args)
         {
+            string targetArgument = args.FirstOrDefault(
+                x => x.StartsWith("/target=", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(targetArgument))
+            {
+                string customTarget = targetArgument.Substring("/target=".Length).Trim().Trim('"');
+                if (string.IsNullOrWhiteSpace(customTarget))
+                {
+                    throw new ArgumentException("Custom installation target is empty.");
+                }
+
+                return Path.GetFullPath(customTarget);
+            }
+
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             return Path.Combine(appData, "Autodesk", "Revit", "Addins", RevitVersion);
         }

@@ -153,6 +153,30 @@ namespace FamilyConverter.Revit2021.Utils
             return accumulator.ToBoundingBox();
         }
 
+        public static BoundingBoxXYZ GetPolyLineBoundingBox(PolyLine polyLine, Transform transform)
+        {
+            if (polyLine == null)
+            {
+                return null;
+            }
+
+            BoundingBoxAccumulator accumulator = new BoundingBoxAccumulator();
+            try
+            {
+                IList<XYZ> points = polyLine.GetCoordinates();
+                foreach (XYZ point in points)
+                {
+                    accumulator.Add(transform == null ? point : transform.OfPoint(point));
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
+            return accumulator.ToBoundingBox();
+        }
+
         public static BoundingBoxXYZ TransformBoundingBox(BoundingBoxXYZ source, Transform transform)
         {
             if (source == null)
