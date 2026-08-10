@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>DWGOptimizer.CoreConsole2021</AssemblyName>
+    <RootNamespace>DWGOptimizer.CoreConsole</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\DWGOptimizer.CoreConsole2022\WorkerCommands.cs" Link="WorkerCommands.cs" />
+    <ProjectReference Include="..\DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj" />
+    <ProjectReference Include="..\DWGOptimizer.Engine.AutoCAD2021\DWGOptimizer.Engine.AutoCAD2021.csproj" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="24.0.0" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

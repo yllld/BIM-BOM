@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>DWGOptimizer.AutoCAD2022</AssemblyName>
+    <RootNamespace>DWGOptimizer.AutoCAD2022</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="AssemblyAccess.cs;DwgAnalyzer.cs;DwgOptimizerService.cs;GeometrySupport.cs;OutputPathService.cs;ProductInfo.cs;ReadinessScorer.cs;ReportWriter.cs" />
+    <Resource Include="Assets\financial-growth-analysis-16.png" />
+    <Resource Include="Assets\financial-growth-analysis-32.png" />
+    <ProjectReference Include="..\DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj" />
+    <ProjectReference Include="..\DWGOptimizer.Engine.AutoCAD2022\DWGOptimizer.Engine.AutoCAD2022.csproj" />
+    <Reference Include="AcCoreMgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcDbMgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcMgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcDbMgdBrep">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcDbMgdBrep.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AdWindows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+</Project>

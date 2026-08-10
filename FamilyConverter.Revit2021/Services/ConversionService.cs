@@ -41,6 +41,11 @@ namespace FamilyConverter.Revit2021.Services
         public ConversionSummary Convert(UIApplication uiapp, ImportInstance importInstance, IList<GeometryObjectInfo> geometryObjects, ConversionOptions options)
         {
             Document document = uiapp.ActiveUIDocument.Document;
+            return Convert(document, importInstance, geometryObjects, options);
+        }
+
+        public ConversionSummary Convert(Document document, ImportInstance importInstance, IList<GeometryObjectInfo> geometryObjects, ConversionOptions options)
+        {
             var summary = new ConversionSummary();
 
             if (geometryObjects == null || geometryObjects.Count == 0)

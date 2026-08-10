@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -20,6 +21,21 @@ namespace DWGConverter.FamilyGeometry.Installer
 
             try
             {
+                if (IsRevitRunning())
+                {
+                    if (!quiet)
+                    {
+                        MessageBox.Show(
+                            "Close Revit before installing " + ProductName + "." + Environment.NewLine + Environment.NewLine +
+                            "Revit keeps the add-in DLL locked until the application is closed.",
+                            ProductName,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
+
+                    return 3;
+                }
+
                 string addinsDirectory = GetAddinsDirectory();
                 string dllPath = Path.Combine(addinsDirectory, DllFileName);
                 string addinPath = Path.Combine(addinsDirectory, AddinFileName);
@@ -70,6 +86,22 @@ namespace DWGConverter.FamilyGeometry.Installer
                 MessageBoxIcon.Question);
 
             return result == DialogResult.OK;
+        }
+
+        private static bool IsRevitRunning()
+        {
+            Process[] processes = Process.GetProcessesByName("Revit");
+            try
+            {
+                return processes.Length > 0;
+            }
+            finally
+            {
+                foreach (Process process in processes)
+                {
+                    process.Dispose();
+                }
+            }
         }
 
         private static string GetAddinsDirectory()

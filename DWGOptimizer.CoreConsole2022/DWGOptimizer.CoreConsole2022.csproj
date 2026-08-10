@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>DWGOptimizer.CoreConsole2022</AssemblyName>
+    <RootNamespace>DWGOptimizer.CoreConsole2022</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DWGOptimizer.Contracts\DWGOptimizer.Contracts.csproj" />
+    <ProjectReference Include="..\DWGOptimizer.Engine.AutoCAD2022\DWGOptimizer.Engine.AutoCAD2022.csproj" />
+    <Reference Include="AcCoreMgd"><HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcCoreMgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AcDbMgd"><HintPath>C:\Program Files\Autodesk\AutoCAD 2022\AcDbMgd.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

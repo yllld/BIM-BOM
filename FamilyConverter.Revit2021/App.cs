@@ -35,6 +35,15 @@ namespace FamilyConverter.Revit2021
                 AddButton(
                     panel,
                     assemblyPath,
+                    "FamilyConverterImportConvertCommand",
+                    "Import\nConvert",
+                    typeof(ImportConvertCommand),
+                    RibbonIconKind.SimpleConvert,
+                    "Выбрать DWG, DXF или SAT, автоматически импортировать от начала координат, проверить найденную геометрию и построить её в текущем семействе.");
+
+                AddButton(
+                    panel,
+                    assemblyPath,
                     "FamilyConverterTurboCommand",
                     "Turbo\nFreeForm",
                     typeof(TurboCommand),
