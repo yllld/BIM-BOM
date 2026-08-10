@@ -1,10 +1,10 @@
 # DWG Converter - Family Geometry
 
-DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Revit 2021. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
+DWG Converter - Family Geometry — Revit Add-in на C# / WPF для Autodesk Revit 2025. Плагин работает внутри редактора семейств и преобразует уже импортированную пользователем 3D DWG-геометрию в геометрию Revit.
 
-Для Autodesk Revit 2025 предусмотрена отдельная сборка на .NET 8 с командами `Simple Convert` и `Turbo FreeForm`.
+Этот README относится к ветке `revit-2025` и сборке на .NET 8 с командами `Simple Convert` и `Turbo FreeForm`. Стабильная версия Revit 2021 находится в `main`, а изолированная разработка команды `2D Drawing to Family` — в `2d-converter`.
 
-Плагин не импортирует DWG сам. Пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает ImportInstance и запускает команду `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
+Проект Revit 2025 переиспользует совместимые C#- и XAML-файлы из `FamilyConverter.Revit2021/`, исключая код `DrawingToFamily/`. Плагин не импортирует DWG сам: пользователь импортирует 3D DWG стандартными средствами Revit, вручную позиционирует его в семействе, выбирает `ImportInstance` и запускает команду `BIM BOM -> DWG Converter - Family Geometry -> Simple Convert`.
 
 ## Ограничения MVP
 
@@ -20,68 +20,21 @@ DWG Converter - Family Geometry — MVP Revit Add-in на C# для Autodesk Rev
 
 ## Требования
 
-- Autodesk Revit 2021.
-- .NET Framework 4.8.
-- Для отдельной сборки 2025: Autodesk Revit 2025 и .NET 8 SDK.
-- Windows.
-- Visual Studio с поддержкой .NET Framework, .NET 8 и WPF.
-- Newtonsoft.Json из установленного Revit 2021.
-- Для сборки 2025 — `RevitAPI.dll`, `RevitAPIUI.dll` и `Newtonsoft.Json.dll` из установленного Revit 2025.
+- Autodesk Revit 2025.
+- .NET 8 SDK.
+- Windows x64.
+- Visual Studio или Build Tools с поддержкой .NET 8 и WPF.
+- `RevitAPI.dll`, `RevitAPIUI.dll` и `Newtonsoft.Json.dll` из установленного Revit 2025.
 
 Ссылки на `RevitAPI.dll`, `RevitAPIUI.dll` и `NewtonSoft.Json.dll` настроены на:
 
 ```text
-C:\Program Files\Autodesk\Revit 2021\
+C:\Program Files\Autodesk\Revit 2025\
 ```
 
 `Copy Local` для Revit API выключен.
 
-## Сборка
-
-1. Откройте `src/FamilyConverter.Revit2021.sln` в Visual Studio.
-2. Восстановите NuGet-пакеты.
-3. Соберите solution в конфигурации `Release`.
-4. Для ручной установки скопируйте DLL и `FamilyConverter.addin` в каталог add-in Revit 2021.
-
-Каталог установки манифеста:
-
-```text
-%APPDATA%\Autodesk\Revit\Addins\2021\
-```
-
-В манифесте `FamilyConverter.addin` указан путь:
-
-```text
-%APPDATA%\Autodesk\Revit\Addins\2021\FamilyConverter.Revit2021.dll
-```
-
-## Установщик
-
-Release-сборка создает единый EXE-установщик:
-
-```text
-DWGConverter.FamilyGeometry.Installer\bin\Release\DWGConverter-FamilyGeometry-Installer.exe
-```
-
-Готовый собранный файл для скачивания хранится в:
-
-```text
-dist\DWGConverter-FamilyGeometry-Installer.exe
-```
-
-Установщик не требует прав администратора. Он записывает DLL и `.addin` в:
-
-```text
-%APPDATA%\Autodesk\Revit\Addins\2021\
-```
-
-Для тихой установки можно запустить:
-
-```text
-DWGConverter-FamilyGeometry-Installer.exe /quiet
-```
-
-### Revit 2025: Simple Convert и Turbo FreeForm
+## Сборка Revit 2025
 
 Откройте:
 
