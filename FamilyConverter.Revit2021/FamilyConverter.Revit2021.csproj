@@ -59,6 +59,7 @@
   <ItemGroup>
     <Compile Include="App.cs" />
     <Compile Include="Command.cs" />
+    <Compile Include="ImportConvertCommand.cs" />
     <Compile Include="DonateCommand.cs" />
     <Compile Include="OpenReportsFolderCommand.cs" />
     <Compile Include="ProductInfo.cs" />
@@ -82,6 +83,7 @@
     <Compile Include="Models\SolidInfo.cs" />
     <Compile Include="Services\AiConfigService.cs" />
     <Compile Include="Services\AiGeometryAdvisor.cs" />
+    <Compile Include="Services\CadImportService.cs" />
     <Compile Include="Services\ConversionService.cs" />
     <Compile Include="Services\ExtrusionCreationService.cs" />
     <Compile Include="Services\FreeFormCreationService.cs" />
