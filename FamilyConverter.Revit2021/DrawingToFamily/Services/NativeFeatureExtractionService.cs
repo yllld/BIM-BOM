@@ -359,7 +359,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     ZMaxMm = centerZ + diameterMm * 0.5,
                     DiameterMm = diameterMm,
                     Confidence = xRangeBox == null ? 0.45 : xRangeBox.SourceProjection == ProjectionType.Front ? 0.85 : 0.65,
-                    CanBuild = false,
+                    CanBuild = true,
                     BuildMethod = "Face circular opening candidate along X"
                 };
                 feature.SourceContourIds.Add(circle.Contour.Id);
@@ -367,13 +367,12 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 {
                     feature.SourceContourIds.Add(xRangeBox.Contour.Id);
                 }
-                feature.SkipReason = xRangeBox == null
-                    ? "Side circle recorded as reference only: length was not confirmed in Front/Plan."
-                    : "Side circle recorded as face opening only. Plan-dictating MVP does not build side-view circles as solid rods.";
-                feature.Warnings.Add(feature.SkipReason);
+                feature.Warnings.Add(xRangeBox == null
+                    ? "Side circle length was not confirmed in Front/Plan; a full-width void extrusion will be attempted."
+                    : "Side circle will be built as a void extrusion along X.");
                 if (xRangeBox != null && xRangeBox.SourceProjection == ProjectionType.Plan)
                 {
-                    feature.Warnings.Add("Side circle had only a Plan-range hint; it is not enough to create a solid cylinder.");
+                    feature.Warnings.Add("Side circle had only a Plan-range hint; the void extrusion may need manual review.");
                 }
 
                 yield return feature;
@@ -404,7 +403,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     ZMaxMm = centerZ + diameterMm * 0.5,
                     DiameterMm = diameterMm,
                     Confidence = yRangeBox == null ? 0.45 : 0.75,
-                    CanBuild = false,
+                    CanBuild = true,
                     BuildMethod = "Face circular opening candidate along Y"
                 };
                 feature.SourceContourIds.Add(circle.Contour.Id);
@@ -412,10 +411,9 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 {
                     feature.SourceContourIds.Add(yRangeBox.Contour.Id);
                 }
-                feature.SkipReason = yRangeBox == null
-                    ? "Front circle recorded as reference only: depth was not confirmed in Plan/Side."
-                    : "Front circle recorded as face opening only. Plan-dictating MVP does not build front-view circles as solid rods.";
-                feature.Warnings.Add(feature.SkipReason);
+                feature.Warnings.Add(yRangeBox == null
+                    ? "Front circle depth was not confirmed in Plan/Side; a full-depth void extrusion will be attempted."
+                    : "Front circle will be built as a void extrusion along Y.");
 
                 yield return feature;
             }
@@ -445,7 +443,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     ZMaxMm = zRangeBox == null ? totalHeightMm : Math.Min(totalHeightMm, Math.Max(0, zRangeBox.MaxZMm)),
                     DiameterMm = diameterMm,
                     Confidence = zRangeBox == null ? 0.45 : 0.75,
-                    CanBuild = false,
+                    CanBuild = true,
                     BuildMethod = "Plan circular opening candidate along Z"
                 };
                 feature.SourceContourIds.Add(circle.Contour.Id);
@@ -453,10 +451,9 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 {
                     feature.SourceContourIds.Add(zRangeBox.Contour.Id);
                 }
-                feature.SkipReason = zRangeBox == null
-                    ? "Plan circle recorded as reference only: height was not confirmed in Front/Side."
-                    : "Plan circle recorded as opening candidate. Void cutting is kept out of crash-safe MVP build.";
-                feature.Warnings.Add(feature.SkipReason);
+                feature.Warnings.Add(zRangeBox == null
+                    ? "Plan circle height was not confirmed in Front/Side; a full-height void extrusion will be attempted."
+                    : "Plan circle will be built as a void extrusion along Z.");
 
                 yield return feature;
             }

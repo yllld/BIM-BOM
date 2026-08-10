@@ -14,11 +14,12 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
         private const double SafeToleranceFeet = 1.0e-6;
         // Revit 2021 can terminate on dirty DWG curve profiles before managed exceptions are raised.
         // Keep exact-profile creation disabled until we can isolate unsafe contours outside NewExtrusion/NewModelCurve.
-        private static readonly bool DetailedCandidateGeometryEnabled = false;
+        private static readonly bool DetailedCandidateGeometryEnabled = true;
         private static readonly bool SimpleFreeFormGeometryEnabled = false;
         private static readonly bool PlanOnlySafeExtrusionEnabled = true;
         private readonly SubcategoryService _subcategoryService;
         private readonly DrawingToFamilyLogger _logger;
+        private bool _suppressRevitWarnings;
 
         public FamilyGeometryBuilder(SubcategoryService subcategoryService)
             : this(subcategoryService, null)
@@ -48,12 +49,24 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             }
 
             IList<BuildCandidate> buildCandidates = candidates ?? new List<BuildCandidate>();
+            _suppressRevitWarnings = ShouldSuppressRevitWarnings(settings);
             result.BuildCandidateCount = buildCandidates.Count;
             UpdateGlobalDimensions(plan, front, side, result);
             LogData("Build candidate count", buildCandidates.Count);
             LogRegion("Build Plan region", plan);
             LogRegion("Build Front region", front);
             LogRegion("Build Side region", side);
+
+            if (settings == null || !settings.BuildGeometry)
+            {
+                LogStage("FamilyGeometryBuilder BuildGeometry disabled");
+                result.Warnings.Add("BuildGeometry is disabled. Analysis/report was created without Revit model creation.");
+                WarnAboutSuspiciousSize(result, result.WidthMm, "ширина");
+                WarnAboutSuspiciousSize(result, result.DepthMm, "глубина");
+                WarnAboutSuspiciousSize(result, result.HeightMm, "высота");
+                LogStage("FamilyGeometryBuilder.Build end");
+                return;
+            }
 
             if (!DetailedCandidateGeometryEnabled)
             {
@@ -66,17 +79,6 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                         candidate.BuildResult = "Crash-safe staged Plan-only mode: candidate recorded.";
                         candidate.IsBuilt = false;
                     }
-                }
-
-                if (settings == null || !settings.BuildGeometry)
-                {
-                    LogStage("FamilyGeometryBuilder BuildGeometry disabled");
-                    result.Warnings.Add("BuildGeometry is disabled. Analysis/report was created without Revit model creation.");
-                    WarnAboutSuspiciousSize(result, result.WidthMm, "ширина");
-                    WarnAboutSuspiciousSize(result, result.DepthMm, "глубина");
-                    WarnAboutSuspiciousSize(result, result.HeightMm, "высота");
-                    LogStage("FamilyGeometryBuilder.Build end");
-                    return;
                 }
 
                 if (PlanOnlySafeExtrusionEnabled)
@@ -155,46 +157,36 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                         continue;
                     }
 
-                    using (var transaction = new Transaction(document, "2D2F Candidate " + index.ToString("000")))
+                    try
                     {
-                        try
+                        bool built = BuildCandidate(document, candidate, index, settings, result);
+                        if (built)
                         {
-                            transaction.Start();
-                            bool built = BuildCandidate(document, candidate, index, result);
-                            if (built)
-                            {
-                                transaction.Commit();
-                                candidate.IsBuilt = true;
-                            }
-                            else
-                            {
-                                transaction.RollBack();
-                                result.FailedBuildCandidates++;
-                            }
+                            candidate.IsBuilt = true;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            if (transaction.HasStarted())
-                            {
-                                transaction.RollBack();
-                            }
-
-                            candidate.BuildResult = ex.Message;
-                            result.Errors.Add("Candidate " + ShortId(candidate) + " failed: " + ex.Message);
                             result.FailedBuildCandidates++;
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        candidate.BuildResult = ex.Message;
+                        result.Errors.Add("Candidate " + ShortId(candidate) + " failed: " + ex.Message);
+                        result.FailedBuildCandidates++;
                     }
 
                     index++;
                 }
 
-                if (result.CreatedGeometryCount == 0 && result.ReferenceLinesCreated == 0)
+                if (buildCandidates.Count > 0 && result.CreatedGeometryCount == 0 && result.ReferenceLinesCreated == 0)
                 {
                     using (var transaction = new Transaction(document, "2D2F FALLBACK Bounding Box"))
                     {
                         try
                         {
                             transaction.Start();
+                            ConfigureFailureHandling(transaction);
                             Element fallback = CreateFallbackBox(document, plan, front, settings, result);
                             if (fallback != null)
                             {
@@ -236,6 +228,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             DrawingToFamilyResult result)
         {
             LogStage("FamilyGeometryBuilder.BuildNativeFeatures start");
+            _suppressRevitWarnings = ShouldSuppressRevitWarnings(settings);
             if (document == null || !document.IsFamilyDocument)
             {
                 result.Errors.Add("Команда работает только в редакторе семейств Revit.");
@@ -243,11 +236,17 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             }
 
             IList<NativeGeometryFeature> nativeFeatures = features ?? new List<NativeGeometryFeature>();
-            result.NativeFeatureCount = nativeFeatures.Count;
-            result.BoxFeatureCount = nativeFeatures.Count(IsBoxFeature);
-            result.CylinderFeatureCount = nativeFeatures.Count(x => x.FeatureType == NativeFeatureType.Cylinder
-                || x.FeatureType == NativeFeatureType.VoidCylinder);
-            UpdateGlobalDimensions(nativeFeatures, result);
+            if (result.NativeFeatureCount == 0)
+            {
+                result.NativeFeatureCount = nativeFeatures.Count;
+                result.BoxFeatureCount = nativeFeatures.Count(IsBoxFeature);
+                result.CylinderFeatureCount = nativeFeatures.Count(x => x.FeatureType == NativeFeatureType.Cylinder
+                    || x.FeatureType == NativeFeatureType.VoidCylinder);
+            }
+            if (result.WidthMm <= 0 || result.DepthMm <= 0 || result.HeightMm <= 0)
+            {
+                UpdateGlobalDimensions(nativeFeatures, result);
+            }
             LogData("Native feature count", nativeFeatures.Count);
 
             if (settings == null || !settings.BuildGeometry)
@@ -321,6 +320,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                             feature.DiameterMm,
                             feature.BuildMethod));
                         transaction.Start();
+                        ConfigureFailureHandling(transaction);
                         Element element = BuildNativeFeature(document, feature, index, result);
                         if (element != null)
                         {
@@ -332,7 +332,14 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                             }
 
                             result.CreatedGeometryCount++;
-                            result.SolidExtrusionsCreated++;
+                            if (feature.FeatureType == NativeFeatureType.VoidCylinder)
+                            {
+                                result.VoidProfilesUsed++;
+                            }
+                            else
+                            {
+                                result.SolidExtrusionsCreated++;
+                            }
                             result.CreatedElementIds.Add(element.Id.IntegerValue);
                         }
                         else
@@ -370,6 +377,64 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             LogStage("FamilyGeometryBuilder.BuildNativeFeatures end");
         }
 
+        public void BuildReferenceContours(
+            Document document,
+            IList<RecognizedContour> contours,
+            DrawingToFamilySettings settings,
+            DrawingToFamilyResult result)
+        {
+            LogStage("FamilyGeometryBuilder.BuildReferenceContours start");
+            _suppressRevitWarnings = ShouldSuppressRevitWarnings(settings);
+            if (document == null || !document.IsFamilyDocument)
+            {
+                result.Errors.Add("Reference/model lines can be created only inside a Revit family document.");
+                return;
+            }
+
+            if (settings != null && !settings.BuildGeometry)
+            {
+                LogStage("FamilyGeometryBuilder.BuildReferenceContours skipped - report only");
+                return;
+            }
+
+            int index = 1;
+            foreach (RecognizedContour contour in contours ?? new List<RecognizedContour>())
+            {
+                if (contour == null
+                    || contour.IsBuilt
+                    || contour.Curves == null
+                    || contour.Curves.Count == 0)
+                {
+                    index++;
+                    continue;
+                }
+
+                bool shouldBuildReference =
+                    contour.Type == ContourType.OpenCurve
+                    || contour.Type == ContourType.ReferenceCurve
+                    || contour.Type == ContourType.Invalid
+                    || contour.Type == ContourType.VoidProfile
+                    || contour.SourceProjection != ProjectionType.Plan;
+                if (!shouldBuildReference)
+                {
+                    index++;
+                    continue;
+                }
+
+                var candidate = new BuildCandidate
+                {
+                    PrimaryContour = contour,
+                    Direction = BuildDirection.ReferenceOnly,
+                    CanBuild = true,
+                    Confidence = 0.25
+                };
+                CreateReferenceLines(document, candidate, 50000 + index, result);
+                index++;
+            }
+
+            LogStage("FamilyGeometryBuilder.BuildReferenceContours end");
+        }
+
         private Element BuildNativeFeature(Document document, NativeGeometryFeature feature, int index, DrawingToFamilyResult result)
         {
             if (feature.FeatureType == NativeFeatureType.Cylinder)
@@ -379,9 +444,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
 
             if (feature.FeatureType == NativeFeatureType.VoidCylinder)
             {
-                feature.BuildResult = "Void/face opening candidate is report-only in crash-safe MVP mode.";
-                result.Warnings.Add(feature.Name + ": " + feature.BuildResult);
-                return null;
+                return BuildVoidCylinderFeature(document, feature, index, result);
             }
 
             if (IsBoxFeature(feature))
@@ -420,6 +483,16 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
         }
 
         private Element BuildCylinderFeature(Document document, NativeGeometryFeature feature, int index, DrawingToFamilyResult result)
+        {
+            return BuildCylinderFeature(document, feature, index, result, true);
+        }
+
+        private Element BuildVoidCylinderFeature(Document document, NativeGeometryFeature feature, int index, DrawingToFamilyResult result)
+        {
+            return BuildCylinderFeature(document, feature, index, result, false);
+        }
+
+        private Element BuildCylinderFeature(Document document, NativeGeometryFeature feature, int index, DrawingToFamilyResult result, bool isSolid)
         {
             double radius = UnitUtilsExtensions.MmToFeet(feature.DiameterMm * 0.5);
             if (!IsSafeNativeSize(CylinderLengthMm(feature), "length", feature, result)
@@ -469,9 +542,9 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 return null;
             }
 
-            Extrusion extrusion = document.FamilyCreate.NewExtrusion(true, profile, sketchPlane, length);
+            Extrusion extrusion = document.FamilyCreate.NewExtrusion(isSolid, profile, sketchPlane, length);
             PostProcessNativeElement(document, extrusion, feature, index);
-            feature.BuildResult = "Native cylinder extrusion created.";
+            feature.BuildResult = isSolid ? "Native cylinder extrusion created." : "Native void cylinder extrusion created.";
             return extrusion;
         }
 
@@ -534,6 +607,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     {
                         LogStage("Candidate " + index.ToString("000") + " transaction start");
                         transaction.Start();
+                        ConfigureFailureHandling(transaction);
                         LogStage("Candidate " + index.ToString("000") + " transaction started");
                         Element element = TryCreatePlanOnlySafeExtrusion(document, candidate, plan, index, result);
                         bool createdFreeForm = false;
@@ -807,6 +881,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 try
                 {
                     transaction.Start();
+                    ConfigureFailureHandling(transaction);
                     Element fallback = CreateFallbackBox(document, plan, front, settings, result);
                     if (fallback != null)
                     {
@@ -854,6 +929,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     try
                     {
                         transaction.Start();
+                        ConfigureFailureHandling(transaction);
                         FreeFormElement element = TryCreateSimpleFreeForm(document, candidate, null, result);
                         if (element != null)
                         {
@@ -1008,6 +1084,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 try
                 {
                     transaction.Start();
+                    ConfigureFailureHandling(transaction);
                     Solid solid = CreateFallbackBoxSolid(plan, front);
                     FreeFormElement fallback = solid == null ? null : FreeFormElement.Create(document, solid);
                     if (fallback != null)
@@ -1052,7 +1129,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             return GeometryCreationUtilities.CreateExtrusionGeometry(new List<CurveLoop> { loop }, XYZ.BasisZ, height);
         }
 
-        private bool BuildCandidate(Document document, BuildCandidate candidate, int index, DrawingToFamilyResult result)
+        private bool BuildCandidate(Document document, BuildCandidate candidate, int index, DrawingToFamilySettings settings, DrawingToFamilyResult result)
         {
             if (candidate.Direction == BuildDirection.ReferenceOnly)
             {
@@ -1065,41 +1142,77 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 return false;
             }
 
-            if (candidate.VoidContours.Count > 0)
-            {
-                result.Warnings.Add("Candidate " + ShortId(candidate) + ": void profiles are detected but kept out of the solid extrusion in crash-safe MVP mode.");
-            }
-
             Element extrusion = TryCreateExtrusion(document, candidate, index, result);
-            if (extrusion == null)
+            if (extrusion != null)
             {
-                int referenceCount = CreateReferenceLines(document, candidate, index, result);
-                candidate.BuildResult = referenceCount > 0 ? "Saved as reference lines." : "Skipped: Revit rejected profile.";
-                return referenceCount > 0;
+                CompleteCandidateElement(candidate, extrusion, "Extrusion created.", false, true, result);
+                return true;
             }
 
-            candidate.BuildResult = "Extrusion created.";
-            candidate.PrimaryContour.IsBuilt = true;
-            candidate.PrimaryContour.BuildResult = candidate.BuildResult;
-            result.CreatedGeometryCount++;
-            result.SolidExtrusionsCreated++;
-            result.CreatedElementIds.Add(extrusion.Id.IntegerValue);
+            bool allowFreeForm = settings == null || settings.AllowFreeFormFallback;
+            if (allowFreeForm)
+            {
+                Element exactFreeForm = TryCreateExactFreeForm(document, candidate, index, result);
+                if (exactFreeForm != null)
+                {
+                    CompleteCandidateElement(candidate, exactFreeForm, "Exact-profile FreeForm fallback created.", true, true, result);
+                    return true;
+                }
 
-            int voidReferenceIndex = 1;
+                FreeFormElement boxFreeForm = TryCreateSimpleFreeFormInTransaction(document, candidate, null, index, result);
+                if (boxFreeForm != null)
+                {
+                    CompleteCandidateElement(candidate, boxFreeForm, "BBox FreeForm fallback created.", true, false, result);
+                    result.FallbackUsed = true;
+                    return true;
+                }
+            }
+
+            int referenceCount = CreateReferenceLines(document, candidate, index, result);
+            candidate.BuildResult = referenceCount > 0 ? "Saved as reference lines." : "Skipped: Revit rejected profile.";
+            return referenceCount > 0;
+        }
+
+        private void CompleteCandidateElement(
+            BuildCandidate candidate,
+            Element element,
+            string buildResult,
+            bool freeForm,
+            bool usesVoidLoops,
+            DrawingToFamilyResult result)
+        {
+            candidate.BuildResult = buildResult;
+            candidate.IsBuilt = true;
+            if (candidate.PrimaryContour != null)
+            {
+                candidate.PrimaryContour.IsBuilt = true;
+                candidate.PrimaryContour.BuildResult = buildResult;
+            }
+
             foreach (RecognizedContour voidContour in candidate.VoidContours)
             {
-                var referenceCandidate = new BuildCandidate
+                if (usesVoidLoops && voidContour != null && voidContour.IsValidForRevit)
                 {
-                    PrimaryContour = voidContour,
-                    Direction = BuildDirection.ReferenceOnly,
-                    CanBuild = true,
-                    Confidence = 0.25
-                };
-                CreateReferenceLines(document, referenceCandidate, index * 1000 + voidReferenceIndex, result);
-                voidReferenceIndex++;
+                    voidContour.IsBuilt = true;
+                    voidContour.BuildResult = "Used as inner loop for " + buildResult;
+                    result.VoidProfilesUsed++;
+                }
             }
 
-            return true;
+            result.CreatedGeometryCount++;
+            if (freeForm)
+            {
+                result.FreeFormElementsCreated++;
+                result.FallbackUsed = true;
+            }
+            else
+            {
+                result.SolidExtrusionsCreated++;
+            }
+            if (element != null)
+            {
+                result.CreatedElementIds.Add(element.Id.IntegerValue);
+            }
         }
 
         private Element TryCreateExtrusion(
@@ -1119,7 +1232,6 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     return null;
                 }
 
-                SketchPlane sketchPlane = CreateSketchPlane(document, candidate.Direction);
                 double depthFeet = GetExtrusionDepthFeet(candidate);
                 if (depthFeet <= UnitUtilsExtensions.MmToFeet(0.1))
                 {
@@ -1127,18 +1239,82 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                     return null;
                 }
 
-                Extrusion extrusion = document.FamilyCreate.NewExtrusion(true, profile, sketchPlane, depthFeet);
-                string layerName = candidate.PrimaryContour.SourceLayer ?? "Mixed";
-                Category subcategory = _subcategoryService.GetOrCreate(document, "2D2F_" + layerName, true);
-                ApplyLayerColor(subcategory, candidate.PrimaryContour);
-                _subcategoryService.AssignSubcategory(extrusion, subcategory);
-                SetElementComment(extrusion, BuildElementName(candidate, index));
-                return extrusion;
+                return CreateInTransaction(document, "2D2F Exact Extrusion " + index.ToString("000"), () =>
+                {
+                    SketchPlane sketchPlane = CreateSketchPlane(document, candidate.Direction);
+                    Extrusion extrusion = document.FamilyCreate.NewExtrusion(true, profile, sketchPlane, depthFeet);
+                    string layerName = candidate.PrimaryContour.SourceLayer ?? "Mixed";
+                    Category subcategory = _subcategoryService.GetOrCreate(document, "2D2F_" + layerName, true);
+                    ApplyLayerColor(subcategory, candidate.PrimaryContour);
+                    _subcategoryService.AssignSubcategory(extrusion, subcategory);
+                    SetElementComment(extrusion, BuildElementName(candidate, index));
+                    return extrusion;
+                });
             }
             catch (Exception ex)
             {
                 candidate.Warnings.Add(ex.Message);
                 result.Warnings.Add("Candidate " + ShortId(candidate) + " extrusion failed: " + ex.Message);
+                return null;
+            }
+        }
+
+        private FreeFormElement TryCreateExactFreeForm(Document document, BuildCandidate candidate, int index, DrawingToFamilyResult result)
+        {
+            try
+            {
+                string validationReason;
+                IList<CurveLoop> loops;
+                if (!TryCreateSafeCurveLoops(candidate, out loops, out validationReason))
+                {
+                    candidate.Warnings.Add(validationReason);
+                    result.Warnings.Add("Candidate " + ShortId(candidate) + " exact FreeForm skipped: " + validationReason);
+                    return null;
+                }
+
+                double depthFeet = GetExtrusionDepthFeet(candidate);
+                XYZ direction = GetDirectionVector(candidate.Direction);
+                if (depthFeet <= UnitUtilsExtensions.MmToFeet(0.1) || direction == null)
+                {
+                    candidate.SkipReason = "FreeForm extrusion depth is zero.";
+                    return null;
+                }
+
+                return (FreeFormElement)CreateInTransaction(document, "2D2F Exact FreeForm " + index.ToString("000"), () =>
+                {
+                    Solid solid = GeometryCreationUtilities.CreateExtrusionGeometry(loops, direction, depthFeet);
+                    FreeFormElement element = FreeFormElement.Create(document, solid);
+                    string layerName = candidate.PrimaryContour.SourceLayer ?? "Mixed";
+                    Category subcategory = _subcategoryService.GetOrCreate(document, "2D2F_" + layerName, true);
+                    ApplyLayerColor(subcategory, candidate.PrimaryContour);
+                    _subcategoryService.AssignSubcategory(element, subcategory);
+                    SetElementComment(element, BuildElementName(candidate, index) + "_FREEFORM");
+                    return element;
+                });
+            }
+            catch (Exception ex)
+            {
+                candidate.Warnings.Add(ex.Message);
+                result.Warnings.Add("Candidate " + ShortId(candidate) + " exact FreeForm failed: " + ex.Message);
+                return null;
+            }
+        }
+
+        private FreeFormElement TryCreateSimpleFreeFormInTransaction(
+            Document document,
+            BuildCandidate candidate,
+            DrawingProjectionRegion plan,
+            int index,
+            DrawingToFamilyResult result)
+        {
+            try
+            {
+                return (FreeFormElement)CreateInTransaction(document, "2D2F BBox FreeForm " + index.ToString("000"), () => TryCreateSimpleFreeForm(document, candidate, plan, result));
+            }
+            catch (Exception ex)
+            {
+                candidate.Warnings.Add(ex.Message);
+                result.Warnings.Add("Candidate " + ShortId(candidate) + " bbox FreeForm transaction failed: " + ex.Message);
                 return null;
             }
         }
@@ -1152,32 +1328,58 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             }
 
             int created = 0;
-            SketchPlane sketchPlane = CreateSketchPlane(document, DirectionForProjection(candidate.PrimaryContour.SourceProjection));
-            Category subcategory = _subcategoryService.GetOrCreate(document, "2D2F_Reference", true);
-            foreach (Curve curve in candidate.PrimaryContour.Curves)
+            using (var transaction = new Transaction(document, "2D2F Reference Lines " + index.ToString("000")))
             {
                 try
                 {
-                    if (CurveLengthFeet(curve) <= UnitUtilsExtensions.MmToFeet(0.1))
+                    transaction.Start();
+                    ConfigureFailureHandling(transaction);
+                    SketchPlane sketchPlane = CreateSketchPlane(document, DirectionForProjection(candidate.PrimaryContour.SourceProjection));
+                    Category subcategory = _subcategoryService.GetOrCreate(document, "2D2F_Reference", true);
+                    foreach (Curve curve in candidate.PrimaryContour.Curves)
                     {
-                        continue;
+                        try
+                        {
+                            if (CurveLengthFeet(curve) <= UnitUtilsExtensions.MmToFeet(0.1))
+                            {
+                                continue;
+                            }
+
+                            Curve safeCurve;
+                            if (!TryCreateSafeReferenceCurve(curve, candidate.PrimaryContour.SourceProjection, out safeCurve))
+                            {
+                                continue;
+                            }
+
+                            ModelCurve modelCurve = document.FamilyCreate.NewModelCurve(safeCurve, sketchPlane);
+                            _subcategoryService.AssignSubcategory(modelCurve, subcategory);
+                            SetElementComment(modelCurve, BuildElementName(candidate, index) + "_REF");
+                            result.CreatedElementIds.Add(modelCurve.Id.IntegerValue);
+                            created++;
+                        }
+                        catch (Exception ex)
+                        {
+                            result.Warnings.Add("Reference line failed for candidate " + ShortId(candidate) + ": " + ex.Message);
+                        }
                     }
 
-                    Curve safeCurve;
-                    if (!TryCreateSafeReferenceCurve(curve, candidate.PrimaryContour.SourceProjection, out safeCurve))
+                    if (created > 0)
                     {
-                        continue;
+                        transaction.Commit();
                     }
-
-                    ModelCurve modelCurve = document.FamilyCreate.NewModelCurve(safeCurve, sketchPlane);
-                    _subcategoryService.AssignSubcategory(modelCurve, subcategory);
-                    SetElementComment(modelCurve, BuildElementName(candidate, index) + "_REF");
-                    result.CreatedElementIds.Add(modelCurve.Id.IntegerValue);
-                    created++;
+                    else
+                    {
+                        transaction.RollBack();
+                    }
                 }
                 catch (Exception ex)
                 {
-                    result.Warnings.Add("Reference line failed for candidate " + ShortId(candidate) + ": " + ex.Message);
+                    if (transaction.HasStarted())
+                    {
+                        transaction.RollBack();
+                    }
+
+                    result.Warnings.Add("Reference line transaction failed for candidate " + ShortId(candidate) + ": " + ex.Message);
                 }
             }
 
@@ -1186,6 +1388,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 result.ReferenceLinesCreated += created;
                 result.ReferenceObjectCount += created;
                 candidate.PrimaryContour.BuildResult = "Reference lines created: " + created;
+                candidate.PrimaryContour.IsBuilt = true;
             }
             else
             {
@@ -1280,28 +1483,39 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             profile = null;
             reason = null;
 
+            IList<IList<XYZ>> pointLoops;
+            if (!TryCreateSafeProfilePointLoops(candidate, out pointLoops, out reason))
+            {
+                return false;
+            }
+
+            profile = ToCurveArrArray(pointLoops);
+            return true;
+        }
+
+        private static bool TryCreateSafeCurveLoops(BuildCandidate candidate, out IList<CurveLoop> loops, out string reason)
+        {
+            loops = null;
+            reason = null;
+
+            IList<IList<XYZ>> pointLoops;
+            if (!TryCreateSafeProfilePointLoops(candidate, out pointLoops, out reason))
+            {
+                return false;
+            }
+
+            loops = ToCurveLoops(pointLoops);
+            return loops.Count > 0;
+        }
+
+        private static bool TryCreateSafeProfilePointLoops(BuildCandidate candidate, out IList<IList<XYZ>> pointLoops, out string reason)
+        {
+            pointLoops = new List<IList<XYZ>>();
+            reason = null;
+
             if (candidate == null || candidate.PrimaryContour == null)
             {
                 reason = "Candidate has no primary contour.";
-                return false;
-            }
-
-            RecognizedContour contour = candidate.PrimaryContour;
-            if (contour.Type != ContourType.SolidProfile || !contour.IsClosed || !contour.IsValidForRevit)
-            {
-                reason = "Only closed valid SolidProfile contours are allowed to call Revit NewExtrusion.";
-                return false;
-            }
-
-            if (contour.Curves.Count < 3)
-            {
-                reason = "Contour has fewer than 3 curves.";
-                return false;
-            }
-
-            if (contour.Curves.Count > MaxCurvesPerSafeExtrusion)
-            {
-                reason = "Contour has " + contour.Curves.Count + " curves; safe MVP limit is " + MaxCurvesPerSafeExtrusion + ". Saved as reference instead.";
                 return false;
             }
 
@@ -1312,7 +1526,64 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 return false;
             }
 
-            IList<XYZ> points = GetOrderedLoopPoints(contour.Curves);
+            IList<XYZ> outerPoints;
+            if (!TryGetSafeContourPoints(candidate, candidate.PrimaryContour, true, out outerPoints, out reason))
+            {
+                return false;
+            }
+
+            pointLoops.Add(outerPoints);
+            foreach (RecognizedContour voidContour in candidate.VoidContours)
+            {
+                IList<XYZ> voidPoints;
+                string voidReason;
+                if (TryGetSafeContourPoints(candidate, voidContour, false, out voidPoints, out voidReason))
+                {
+                    pointLoops.Add(voidPoints);
+                }
+                else if (!string.IsNullOrWhiteSpace(voidReason))
+                {
+                    candidate.Warnings.Add("Void contour skipped from exact profile: " + voidReason);
+                }
+            }
+
+            return pointLoops.Count > 0;
+        }
+
+        private static bool TryGetSafeContourPoints(
+            BuildCandidate candidate,
+            RecognizedContour contour,
+            bool requireSolid,
+            out IList<XYZ> points,
+            out string reason)
+        {
+            points = new List<XYZ>();
+            reason = null;
+
+            if (contour == null)
+            {
+                reason = "Contour is missing.";
+                return false;
+            }
+
+            bool acceptedType = requireSolid
+                ? contour.Type == ContourType.SolidProfile
+                : contour.Type == ContourType.VoidProfile;
+            if (!acceptedType || !contour.IsClosed || !contour.IsValidForRevit)
+            {
+                reason = requireSolid
+                    ? "Only closed valid SolidProfile contours are allowed as extrusion outer loops."
+                    : "Only closed valid VoidProfile contours are allowed as extrusion inner loops.";
+                return false;
+            }
+
+            if (contour.Curves == null || contour.Curves.Count < 3)
+            {
+                reason = "Contour has fewer than 3 curves.";
+                return false;
+            }
+
+            points = GetOrderedLoopPoints(contour.Curves);
             if (points.Count < 3)
             {
                 reason = "Cannot extract ordered loop points.";
@@ -1337,19 +1608,66 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 return false;
             }
 
-            if (Math.Abs(AreaFeet2(points, candidate.PrimaryContour.SourceProjection)) < 1.0e-10)
+            if (Math.Abs(AreaFeet2(points, contour.SourceProjection)) < 1.0e-10)
             {
                 reason = "Profile area is too small.";
                 return false;
             }
 
-            if (HasSelfIntersections(points, candidate.PrimaryContour.SourceProjection))
+            if (HasSelfIntersections(points, contour.SourceProjection))
             {
                 reason = "Profile appears self-intersecting.";
                 return false;
             }
 
-            CurveArray loop = new CurveArray();
+            return true;
+        }
+
+        private static CurveArrArray ToCurveArrArray(IList<IList<XYZ>> pointLoops)
+        {
+            var profile = new CurveArrArray();
+            foreach (IList<XYZ> points in pointLoops ?? new List<IList<XYZ>>())
+            {
+                CurveArray loop = CreateCurveArray(points);
+                if (loop.Size > 0)
+                {
+                    profile.Append(loop);
+                }
+            }
+
+            return profile;
+        }
+
+        private static IList<CurveLoop> ToCurveLoops(IList<IList<XYZ>> pointLoops)
+        {
+            var loops = new List<CurveLoop>();
+            foreach (IList<XYZ> points in pointLoops ?? new List<IList<XYZ>>())
+            {
+                var loop = new CurveLoop();
+                for (int i = 0; i < points.Count; i++)
+                {
+                    XYZ start = points[i];
+                    XYZ end = points[(i + 1) % points.Count];
+                    if (start.DistanceTo(end) > UnitUtilsExtensions.MmToFeet(0.5))
+                    {
+                        loop.Append(Line.CreateBound(start, end));
+                    }
+                }
+
+                loops.Add(loop);
+            }
+
+            return loops;
+        }
+
+        private static CurveArray CreateCurveArray(IList<XYZ> points)
+        {
+            var loop = new CurveArray();
+            if (points == null)
+            {
+                return loop;
+            }
+
             for (int i = 0; i < points.Count; i++)
             {
                 XYZ start = points[i];
@@ -1360,9 +1678,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 }
             }
 
-            profile = new CurveArrArray();
-            profile.Append(loop);
-            return true;
+            return loop;
         }
 
         private static bool IsBoxFeature(NativeGeometryFeature feature)
@@ -1914,6 +2230,92 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             if (valueMm > 0 && (valueMm < 10.0 || valueMm > 100000.0))
             {
                 result.Warnings.Add("Подозрительный габарит: " + label + " = " + valueMm.ToString("0.#") + " мм. Проверьте единицы импорта DWG. Отдельная проверка масштаба в MVP не используется.");
+            }
+        }
+
+        private static bool ShouldSuppressRevitWarnings(DrawingToFamilySettings settings)
+        {
+            return settings != null && settings.SuppressRevitWarnings;
+        }
+
+        private void ConfigureFailureHandling(Transaction transaction)
+        {
+            if (!_suppressRevitWarnings || transaction == null)
+            {
+                return;
+            }
+
+            try
+            {
+                FailureHandlingOptions options = transaction.GetFailureHandlingOptions();
+                options.SetFailuresPreprocessor(new RevitWarningSuppressor());
+                transaction.SetFailureHandlingOptions(options);
+            }
+            catch
+            {
+                // Failure options are best-effort; transaction creation should continue.
+            }
+        }
+
+        private Element CreateInTransaction(Document document, string name, Func<Element> create)
+        {
+            var transaction = new Transaction(document, name);
+            transaction.Start();
+            ConfigureFailureHandling(transaction);
+            try
+            {
+                Element element = create();
+                if (element == null)
+                {
+                    transaction.RollBack();
+                    return null;
+                }
+
+                transaction.Commit();
+                return element;
+            }
+            catch
+            {
+                try
+                {
+                    if (transaction.GetStatus() == TransactionStatus.Started)
+                    {
+                        transaction.RollBack();
+                    }
+                }
+                catch
+                {
+                    // Nothing else can be done here.
+                }
+
+                throw;
+            }
+        }
+
+        private class RevitWarningSuppressor : IFailuresPreprocessor
+        {
+            public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+            {
+                if (failuresAccessor == null)
+                {
+                    return FailureProcessingResult.Continue;
+                }
+
+                IList<FailureMessageAccessor> failures = failuresAccessor.GetFailureMessages();
+                if (failures == null)
+                {
+                    return FailureProcessingResult.Continue;
+                }
+
+                foreach (FailureMessageAccessor failure in failures)
+                {
+                    if (failure != null && failure.GetSeverity() == FailureSeverity.Warning)
+                    {
+                        failuresAccessor.DeleteWarning(failure);
+                    }
+                }
+
+                return FailureProcessingResult.Continue;
             }
         }
 

@@ -71,6 +71,7 @@
     <Compile Include="Models\AiGeometryResponse.cs" />
     <Compile Include="DrawingToFamily\Models\BuildCandidate.cs" />
     <Compile Include="DrawingToFamily\Models\BuildDirection.cs" />
+    <Compile Include="DrawingToFamily\Models\ContourManualOverride.cs" />
     <Compile Include="Models\ConversionMethod.cs" />
     <Compile Include="Models\ConversionOptions.cs" />
     <Compile Include="Models\ConversionResult.cs" />
@@ -78,6 +79,8 @@
     <Compile Include="Models\ConversionSummary.cs" />
     <Compile Include="DrawingToFamily\Models\ContourType.cs" />
     <Compile Include="DrawingToFamily\Models\DrawingProjectionRegion.cs" />
+    <Compile Include="DrawingToFamily\Models\DrawingDiagnosticIssue.cs" />
+    <Compile Include="DrawingToFamily\Models\DrawingDiagnosticSeverity.cs" />
     <Compile Include="DrawingToFamily\Models\DrawingToFamilyPreview.cs" />
     <Compile Include="DrawingToFamily\Models\DrawingToFamilyResult.cs" />
     <Compile Include="DrawingToFamily\Models\DrawingToFamilySettings.cs" />
@@ -101,8 +104,10 @@
     <Compile Include="Services\AiGeometryAdvisor.cs" />
     <Compile Include="Services\ConversionService.cs" />
     <Compile Include="DrawingToFamily\Services\ContourRecognitionService.cs" />
+    <Compile Include="DrawingToFamily\Services\ContourSignatureService.cs" />
     <Compile Include="DrawingToFamily\Services\DrawingToFamilyLogger.cs" />
     <Compile Include="DrawingToFamily\Services\DrawingToFamilyReportWriter.cs" />
+    <Compile Include="DrawingToFamily\Services\DrawingGeometryDiagnosticService.cs" />
     <Compile Include="DrawingToFamily\Services\DwgImportGeometryReader.cs" />
     <Compile Include="DrawingToFamily\Services\DwgLayerAnalyzer.cs" />
     <Compile Include="DrawingToFamily\Services\FamilyGeometryBuilder.cs" />
@@ -133,6 +138,10 @@
     <Compile Include="DrawingToFamily\UI\DrawingToFamilyWindow.xaml.cs">
       <DependentUpon>DrawingToFamilyWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="DrawingToFamily\UI\DrawingPreviewCanvas.cs" />
+    <Compile Include="DrawingToFamily\UI\PreviewContourItem.cs" />
+    <Compile Include="DrawingToFamily\UI\PreviewHitTestService.cs" />
+    <Compile Include="DrawingToFamily\UI\PreviewTransformService.cs" />
     <Compile Include="UI\EmbeddedIcons.cs" />
     <Compile Include="UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

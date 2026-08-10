@@ -30,7 +30,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             {
                 string prompt = string.Format("Укажите {0}-й угол области {1}", i, GetProjectionTitle(type));
                 XYZ picked = _uidoc.Selection.PickPoint(prompt);
-                points.Add(GeometryToleranceUtils.Flatten(picked));
+                points.Add(picked);
             }
 
             DrawingProjectionRegion region = CreateRegion(type, points);
@@ -59,10 +59,49 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 }
             }
 
+            if (region.Entities.Count == 0)
+            {
+                RefreshFlatDwgFallbackEntities(region);
+            }
+
             region.EntityCount = region.Entities.Count;
             region.WarningMessage = region.EntityCount == 0
                 ? "В выбранной области нет объектов DWG."
                 : null;
+        }
+
+        private void RefreshFlatDwgFallbackEntities(DrawingProjectionRegion region)
+        {
+            if (region == null || !region.IsValid || region.PickedPoints.Count < 3 || !IsFlatDwg())
+            {
+                return;
+            }
+
+            IList<XYZ> polygon = RegionPolygon2D(region);
+            AddFallbackEntities(region, polygon, ToFlatXYPoint);
+            if (region.Entities.Count == 0)
+            {
+                AddFallbackEntities(region, polygon, ToFlatYXPoint);
+            }
+        }
+
+        private void AddFallbackEntities(
+            DrawingProjectionRegion region,
+            IList<XYZ> polygon,
+            Func<XYZ, XYZ> pointMapper)
+        {
+            foreach (DwgCurveEntity entity in _entities)
+            {
+                if (entity == null || entity.BoundingBox == null || entity.Points.Count == 0)
+                {
+                    continue;
+                }
+
+                if (IntersectsMappedRegion(entity, polygon, pointMapper))
+                {
+                    region.Entities.Add(entity);
+                }
+            }
         }
 
         private static DrawingProjectionRegion CreateRegion(ProjectionType type, IList<XYZ> points)
@@ -79,37 +118,50 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
                 return region;
             }
 
-            double minX = double.MaxValue;
-            double maxX = double.MinValue;
-            double minY = double.MaxValue;
-            double maxY = double.MinValue;
+            XYZ axisU;
+            XYZ axisV;
+            ResolveRegionAxes(type, points, out axisU, out axisV);
+
+            double minU = double.MaxValue;
+            double maxU = double.MinValue;
+            double minV = double.MaxValue;
+            double maxV = double.MinValue;
+            XYZ planeAnchor = XYZ.Zero;
             foreach (XYZ point in points)
             {
-                XYZ flat = GeometryToleranceUtils.Flatten(point);
-                minX = Math.Min(minX, flat.X);
-                maxX = Math.Max(maxX, flat.X);
-                minY = Math.Min(minY, flat.Y);
-                maxY = Math.Max(maxY, flat.Y);
+                planeAnchor += point;
+                double u = point.DotProduct(axisU);
+                double v = point.DotProduct(axisV);
+                minU = Math.Min(minU, u);
+                maxU = Math.Max(maxU, u);
+                minV = Math.Min(minV, v);
+                maxV = Math.Max(maxV, v);
             }
 
-            XYZ a = new XYZ(minX, minY, 0);
-            XYZ b = new XYZ(maxX, minY, 0);
-            XYZ c = new XYZ(maxX, maxY, 0);
-            XYZ d = new XYZ(minX, maxY, 0);
+            planeAnchor = planeAnchor.Divide(points.Count);
+            XYZ normal = axisU.CrossProduct(axisV);
+            double planeOffset = planeAnchor.DotProduct(normal);
+
+            XYZ a = PointFromLocal(axisU, axisV, normal, minU, minV, planeOffset);
+            XYZ b = PointFromLocal(axisU, axisV, normal, maxU, minV, planeOffset);
+            XYZ c = PointFromLocal(axisU, axisV, normal, maxU, maxV, planeOffset);
+            XYZ d = PointFromLocal(axisU, axisV, normal, minU, maxV, planeOffset);
             region.PickedPoints.Add(a);
             region.PickedPoints.Add(b);
             region.PickedPoints.Add(c);
             region.PickedPoints.Add(d);
             region.BoundingBox = BoundingBoxUtils.AddPoint(region.BoundingBox, a);
+            region.BoundingBox = BoundingBoxUtils.AddPoint(region.BoundingBox, b);
             region.BoundingBox = BoundingBoxUtils.AddPoint(region.BoundingBox, c);
+            region.BoundingBox = BoundingBoxUtils.AddPoint(region.BoundingBox, d);
 
             region.Origin = a;
-            region.LocalXAxis = XYZ.BasisX;
-            region.LocalYAxis = XYZ.BasisY;
-            region.LocalMinU = 0;
-            region.LocalMinV = 0;
-            region.WidthMm = UnitUtilsExtensions.FeetToMm(Math.Abs(maxX - minX));
-            region.HeightMm = UnitUtilsExtensions.FeetToMm(Math.Abs(maxY - minY));
+            region.LocalXAxis = axisU;
+            region.LocalYAxis = axisV;
+            region.LocalMinU = minU;
+            region.LocalMinV = minV;
+            region.WidthMm = UnitUtilsExtensions.FeetToMm(Math.Abs(maxU - minU));
+            region.HeightMm = UnitUtilsExtensions.FeetToMm(Math.Abs(maxV - minV));
             if (region.WidthMm <= 0 || region.HeightMm <= 0)
             {
                 region.IsValid = false;
@@ -128,26 +180,28 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
 
             for (int i = 0; i < entity.Points.Count; i++)
             {
-                XYZ point = GeometryToleranceUtils.Flatten(entity.Points[i]);
-                if (PointInPolygon(point, region.PickedPoints))
+                XYZ point = ToRegionPoint(entity.Points[i], region);
+                IList<XYZ> polygon = RegionPolygon2D(region);
+                if (PointInPolygon(point, polygon))
                 {
                     return true;
                 }
 
-                if (i > 0 && SegmentIntersectsPolygon(entity.Points[i - 1], entity.Points[i], region.PickedPoints))
+                if (i > 0 && SegmentIntersectsPolygon(entity.Points[i - 1], entity.Points[i], region))
                 {
                     return true;
                 }
             }
 
             XYZ center = BoundingBoxUtils.Center(entity.BoundingBox);
-            return PointInPolygon(GeometryToleranceUtils.Flatten(center), region.PickedPoints);
+            return PointInPolygon(ToRegionPoint(center, region), RegionPolygon2D(region));
         }
 
-        private static bool SegmentIntersectsPolygon(XYZ start, XYZ end, IList<XYZ> polygon)
+        private static bool SegmentIntersectsPolygon(XYZ start, XYZ end, DrawingProjectionRegion region)
         {
-            XYZ a = GeometryToleranceUtils.Flatten(start);
-            XYZ b = GeometryToleranceUtils.Flatten(end);
+            XYZ a = ToRegionPoint(start, region);
+            XYZ b = ToRegionPoint(end, region);
+            IList<XYZ> polygon = RegionPolygon2D(region);
             for (int i = 0; i < polygon.Count; i++)
             {
                 XYZ c = polygon[i];
@@ -159,6 +213,182 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             }
 
             return false;
+        }
+
+        private static void ResolveRegionAxes(ProjectionType type, IList<XYZ> points, out XYZ axisU, out XYZ axisV)
+        {
+            double spanX = CoordinateSpan(points, XYZ.BasisX);
+            double spanY = CoordinateSpan(points, XYZ.BasisY);
+            double spanZ = CoordinateSpan(points, XYZ.BasisZ);
+            const double eps = 1.0e-9;
+
+            if (type == ProjectionType.Front && spanX > eps && spanZ > eps)
+            {
+                axisU = XYZ.BasisX;
+                axisV = XYZ.BasisZ;
+                return;
+            }
+
+            if ((type == ProjectionType.Side || type == ProjectionType.Isometric) && spanY > eps && spanZ > eps)
+            {
+                axisU = XYZ.BasisY;
+                axisV = XYZ.BasisZ;
+                return;
+            }
+
+            if (type == ProjectionType.Plan && spanX > eps && spanY > eps)
+            {
+                axisU = XYZ.BasisX;
+                axisV = XYZ.BasisY;
+                return;
+            }
+
+            XYZ[] axes = new[] { XYZ.BasisX, XYZ.BasisY, XYZ.BasisZ };
+            double[] spans = new[] { spanX, spanY, spanZ };
+            int first = 0;
+            int second = 1;
+            for (int i = 0; i < spans.Length; i++)
+            {
+                if (spans[i] > spans[first])
+                {
+                    second = first;
+                    first = i;
+                }
+                else if (i != first && spans[i] > spans[second])
+                {
+                    second = i;
+                }
+            }
+
+            axisU = axes[first];
+            axisV = axes[second];
+        }
+
+        private static double CoordinateSpan(IList<XYZ> points, XYZ axis)
+        {
+            if (points == null || points.Count == 0)
+            {
+                return 0;
+            }
+
+            double min = double.MaxValue;
+            double max = double.MinValue;
+            foreach (XYZ point in points)
+            {
+                double value = point.DotProduct(axis);
+                min = Math.Min(min, value);
+                max = Math.Max(max, value);
+            }
+
+            return max - min;
+        }
+
+        private static XYZ PointFromLocal(XYZ axisU, XYZ axisV, XYZ normal, double u, double v, double planeOffset)
+        {
+            return axisU.Multiply(u) + axisV.Multiply(v) + normal.Multiply(planeOffset);
+        }
+
+        private static XYZ ToRegionPoint(XYZ point, DrawingProjectionRegion region)
+        {
+            if (point == null || region == null)
+            {
+                return XYZ.Zero;
+            }
+
+            return new XYZ(point.DotProduct(region.LocalXAxis), point.DotProduct(region.LocalYAxis), 0);
+        }
+
+        private static IList<XYZ> RegionPolygon2D(DrawingProjectionRegion region)
+        {
+            var polygon = new List<XYZ>();
+            if (region == null)
+            {
+                return polygon;
+            }
+
+            foreach (XYZ point in region.PickedPoints)
+            {
+                polygon.Add(ToRegionPoint(point, region));
+            }
+
+            return polygon;
+        }
+
+        private static bool IntersectsMappedRegion(
+            DwgCurveEntity entity,
+            IList<XYZ> polygon,
+            Func<XYZ, XYZ> pointMapper)
+        {
+            if (entity == null || polygon == null || polygon.Count < 3 || pointMapper == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < entity.Points.Count; i++)
+            {
+                XYZ point = pointMapper(entity.Points[i]);
+                if (PointInPolygon(point, polygon))
+                {
+                    return true;
+                }
+
+                if (i > 0 && SegmentIntersectsPolygon(entity.Points[i - 1], entity.Points[i], polygon, pointMapper))
+                {
+                    return true;
+                }
+            }
+
+            XYZ center = BoundingBoxUtils.Center(entity.BoundingBox);
+            return PointInPolygon(pointMapper(center), polygon);
+        }
+
+        private static bool SegmentIntersectsPolygon(
+            XYZ start,
+            XYZ end,
+            IList<XYZ> polygon,
+            Func<XYZ, XYZ> pointMapper)
+        {
+            XYZ a = pointMapper(start);
+            XYZ b = pointMapper(end);
+            for (int i = 0; i < polygon.Count; i++)
+            {
+                XYZ c = polygon[i];
+                XYZ d = polygon[(i + 1) % polygon.Count];
+                if (SegmentsIntersect(a, b, c, d))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsFlatDwg()
+        {
+            foreach (DwgCurveEntity entity in _entities)
+            {
+                if (entity == null || entity.BoundingBox == null)
+                {
+                    continue;
+                }
+
+                if (Math.Abs(entity.BoundingBox.Max.Z - entity.BoundingBox.Min.Z) > 1.0e-9)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static XYZ ToFlatXYPoint(XYZ point)
+        {
+            return point == null ? XYZ.Zero : new XYZ(point.X, point.Y, 0);
+        }
+
+        private static XYZ ToFlatYXPoint(XYZ point)
+        {
+            return point == null ? XYZ.Zero : new XYZ(point.Y, point.X, 0);
         }
 
         private static bool SegmentsIntersect(XYZ a, XYZ b, XYZ c, XYZ d)

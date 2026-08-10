@@ -76,6 +76,48 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             builder.AppendLine("Depth: " + result.DepthMm.ToString("0.#") + " mm");
             builder.AppendLine("Height: " + result.HeightMm.ToString("0.#") + " mm");
             builder.AppendLine();
+            builder.AppendLine("Options:");
+            builder.AppendLine("Suppress Revit warnings: " + (settings != null && settings.SuppressRevitWarnings));
+            builder.AppendLine("Build profile projection: " + (settings == null ? "-" : settings.BuildProfileProjection.ToString()));
+            builder.AppendLine();
+
+            builder.AppendLine("Diagnostics:");
+            IList<DrawingDiagnosticIssue> diagnosticIssues = result == null ? new List<DrawingDiagnosticIssue>() : result.Diagnostics;
+            builder.AppendLine("Issues: " + diagnosticIssues.Count);
+            builder.AppendLine("Warnings: " + diagnosticIssues.Count(x => x.Severity == DrawingDiagnosticSeverity.Warning));
+            builder.AppendLine("Errors: " + diagnosticIssues.Count(x => x.Severity == DrawingDiagnosticSeverity.Error));
+            foreach (DrawingDiagnosticIssue issue in diagnosticIssues)
+            {
+                builder.AppendLine(string.Format(
+                    "- {0}; code={1}; projection={2}; layer={3}; target={4}; value={5:0.###}; tolerance={6:0.###}; message={7}; action={8}",
+                    issue.Severity,
+                    string.IsNullOrWhiteSpace(issue.Code) ? "-" : issue.Code,
+                    issue.Projection,
+                    string.IsNullOrWhiteSpace(issue.LayerName) ? "-" : issue.LayerName,
+                    issue.ShortTarget,
+                    issue.ValueMm,
+                    issue.ToleranceMm,
+                    string.IsNullOrWhiteSpace(issue.Message) ? "-" : issue.Message,
+                    string.IsNullOrWhiteSpace(issue.SuggestedAction) ? "-" : issue.SuggestedAction));
+            }
+            builder.AppendLine();
+
+            builder.AppendLine("VISUAL PREVIEW AND USER REVIEW:");
+            builder.AppendLine("Manual contour overrides: " + result.ManualContourOverrideCount);
+            builder.AppendLine("Disabled contours: " + result.DisabledContourCount);
+            foreach (ContourManualOverride manual in settings == null ? new List<ContourManualOverride>() : settings.ManualContourOverrides)
+            {
+                builder.AppendLine(string.Format(
+                    "- signature={0}; projection={1}; layer={2}; auto={3}; final={4}; included={5}; reason={6}",
+                    string.IsNullOrWhiteSpace(manual.Signature) ? "-" : manual.Signature,
+                    manual.Projection,
+                    string.IsNullOrWhiteSpace(manual.LayerName) ? "-" : manual.LayerName,
+                    manual.AutoType,
+                    manual.OverrideType,
+                    manual.IsIncluded,
+                    string.IsNullOrWhiteSpace(manual.Reason) ? "-" : manual.Reason));
+            }
+            builder.AppendLine();
 
             builder.AppendLine("Contours:");
             builder.AppendLine("Found: " + result.ContoursFound);

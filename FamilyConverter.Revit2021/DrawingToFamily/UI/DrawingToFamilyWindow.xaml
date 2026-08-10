@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FamilyConverter.Revit2021.DrawingToFamily.UI"
         Title="DWG Converter - 2D Drawing to Family"
-        Width="900"
-        Height="700"
-        MinWidth="780"
+        Width="1180"
+        Height="820"
+        MinWidth="980"
         MinHeight="620"
         Background="#F7F6FA"
         FontFamily="Segoe UI"
@@ -187,6 +187,101 @@
                 </Border>
 
                 <Border Style="{StaticResource DwgSectionCardStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="230" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="Visual Preview" Style="{StaticResource DwgSectionTitleTextStyle}" />
+
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock Text="Projection" Style="{StaticResource DwgLabelTextStyle}" />
+                            <ComboBox x:Name="PreviewProjectionComboBox" SelectionChanged="PreviewProjectionComboBox_SelectionChanged">
+                                <ComboBoxItem Content="Plan View" Tag="Plan" />
+                                <ComboBoxItem Content="Front View" Tag="Front" />
+                                <ComboBoxItem Content="Side View" Tag="Side" />
+                                <ComboBoxItem Content="3D/ISO View" Tag="Isometric" />
+                            </ComboBox>
+
+                            <TextBlock Text="Filters" Style="{StaticResource DwgLabelTextStyle}" Margin="0,12,0,8" />
+                            <CheckBox x:Name="PreviewSolidCheckBox" Content="Solid" IsChecked="True" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewVoidCheckBox" Content="Void" IsChecked="True" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewReferenceCheckBox" Content="Reference" IsChecked="True" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewOpenCheckBox" Content="Open" IsChecked="True" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewInvalidCheckBox" Content="Invalid" IsChecked="True" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewDisabledCheckBox" Content="Disabled" IsChecked="True" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewOnlyIncludedCheckBox" Content="Only included" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+                            <CheckBox x:Name="PreviewOnlyProblemsCheckBox" Content="Only problems" Checked="PreviewFilterChanged" Unchecked="PreviewFilterChanged" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Fit" Width="66" Margin="0,0,6,0" Click="PreviewFitButton_Click" />
+                                <Button Content="Reset" Width="72" Click="PreviewResetButton_Click" />
+                            </StackPanel>
+                            <Button Content="Zoom selected" Margin="0,8,0,0" Click="PreviewZoomSelectedButton_Click" />
+
+                            <TextBlock Text="Legend" Style="{StaticResource DwgLabelTextStyle}" Margin="0,12,0,8" />
+                            <TextBlock Text="Solid: green solid line&#x0a;Void: blue dashed line&#x0a;Reference/Open: dash-dot with endpoint markers&#x0a;Invalid: red with markers&#x0a;Disabled: gray dotted line"
+                                       Style="{StaticResource DwgSmallMutedTextStyle}" />
+                        </StackPanel>
+
+                        <Border Grid.Row="1" Grid.Column="1" BorderBrush="#E1DFEA" BorderThickness="1" Background="#FFFFFF" MinHeight="360">
+                            <local:DrawingPreviewCanvas x:Name="PreviewCanvas"
+                                                        MinHeight="360"
+                                                        ContourSelected="PreviewCanvas_ContourSelected" />
+                        </Border>
+
+                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="12,0,0,0">
+                            <TextBlock Text="Contours" Style="{StaticResource DwgLabelTextStyle}" />
+                            <DataGrid x:Name="PreviewContourGrid"
+                                      AutoGenerateColumns="False"
+                                      MinHeight="150"
+                                      MaxHeight="190"
+                                      SelectionMode="Single"
+                                      SelectionChanged="PreviewContourGrid_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding ShortId}" Width="72" />
+                                    <DataGridTextColumn Header="Layer" Binding="{Binding LayerName}" Width="*" />
+                                    <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="86" />
+                                    <DataGridCheckBoxColumn Header="On" Binding="{Binding IsIncluded}" Width="48" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Text="Selected contour" Style="{StaticResource DwgLabelTextStyle}" Margin="0,12,0,8" />
+                            <TextBlock x:Name="SelectedContourText" Text="No contour selected" Style="{StaticResource DwgSmallMutedTextStyle}" />
+
+                            <TextBlock Text="Role override" Style="{StaticResource DwgLabelTextStyle}" Margin="0,12,0,8" />
+                            <ComboBox x:Name="SelectedContourRoleComboBox" SelectionChanged="SelectedContourRoleComboBox_SelectionChanged">
+                                <ComboBoxItem Content="Auto" Tag="Auto" />
+                                <ComboBoxItem Content="Solid" Tag="SolidProfile" />
+                                <ComboBoxItem Content="Void" Tag="VoidProfile" />
+                                <ComboBoxItem Content="Reference" Tag="ReferenceCurve" />
+                                <ComboBoxItem Content="Ignore" Tag="Ignore" />
+                            </ComboBox>
+                            <CheckBox x:Name="SelectedContourIncludedCheckBox"
+                                      Content="Include in build"
+                                      Margin="0,10,0,0"
+                                      Checked="SelectedContourIncludedCheckBox_Changed"
+                                      Unchecked="SelectedContourIncludedCheckBox_Changed" />
+                            <Button Content="Reset selected override" Margin="0,8,0,0" Click="ResetSelectedContourOverrideButton_Click" />
+                            <Button Content="Reset all overrides" Margin="0,8,0,0" Click="ResetAllContourOverridesButton_Click" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="2"
+                                   Grid.ColumnSpan="3"
+                                   x:Name="PreviewStatsText"
+                                   Margin="0,12,0,0"
+                                   Style="{StaticResource DwgMutedTextStyle}" />
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource DwgSectionCardStyle}">
                     <StackPanel>
                         <TextBlock Text="Параметры геометрии" Style="{StaticResource DwgSectionTitleTextStyle}" />
                         <Grid>
@@ -206,6 +301,27 @@
                                    Margin="0,12,0,0"
                                    Style="{StaticResource DwgMutedTextStyle}"
                                    TextWrapping="Wrap" />
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="260" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="Проекция-основа профиля выдавливания"
+                                       Style="{StaticResource DwgLabelTextStyle}"
+                                       VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1"
+                                      x:Name="BuildProfileProjectionComboBox"
+                                      MinHeight="28">
+                                <ComboBoxItem Content="Авто: самая насыщенная проекция" Tag="Unknown" />
+                                <ComboBoxItem Content="План: профиль XY, выдавливание Z" Tag="Plan" />
+                                <ComboBoxItem Content="Спереди: профиль XZ, выдавливание Y" Tag="Front" />
+                                <ComboBoxItem Content="Сбоку/слева: профиль YZ, выдавливание X" Tag="Side" />
+                            </ComboBox>
+                        </Grid>
+                        <CheckBox x:Name="SuppressRevitWarningsCheckBox"
+                                  Margin="0,12,0,0"
+                                  Content="Пропускать предупреждения Revit при построении" />
                     </StackPanel>
                 </Border>
             </StackPanel>

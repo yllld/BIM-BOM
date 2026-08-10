@@ -12,6 +12,7 @@ using FamilyConverter.Revit2021.DrawingToFamily.Services;
 using FamilyConverter.Revit2021.DrawingToFamily.UI;
 using FamilyConverter.Revit2021.DrawingToFamily.Utils;
 using FamilyConverter.Revit2021.Services;
+using ProgressWindow = FamilyConverter.Revit2021.UI.ProgressWindow;
 
 namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
 {
@@ -32,6 +33,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             var technicalLog = new DrawingToFamilyLogger();
+            ProgressWindow progressWindow = null;
 
             try
             {
@@ -97,6 +99,14 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     return Result.Cancelled;
                 }
 
+                progressWindow = CreateProgressWindow(uiapp);
+                SetProgress(
+                    progressWindow,
+                    0,
+                    "Готовим выбранные проекции",
+                    "Обновляем слои и области Plan / Front / Side перед финальным анализом.",
+                    5);
+
                 technicalLog.Stage("Apply settings after WPF");
                 technicalLog.Data("ClosureToleranceMm", settings.ClosureToleranceMm);
                 technicalLog.Data("MinimumElementSizeMm", settings.MinimumElementSizeMm);
@@ -113,6 +123,12 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     picker.RefreshRegionEntities(region, settings);
                     technicalLog.Info(string.Format("{0}: entities={1}; size={2:0.#} x {3:0.#} mm", region.Type, region.EntityCount, region.WidthMm, region.HeightMm));
                 }
+                SetProgress(
+                    progressWindow,
+                    0,
+                    "Проекции обновлены",
+                    "Plan / Front / Side готовы к распознаванию контуров.",
+                    12);
 
                 var result = new DrawingToFamilyResult
                 {
@@ -135,16 +151,31 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     return Result.Cancelled;
                 }
 
+                SetProgress(
+                    progressWindow,
+                    1,
+                    "Распознаем контуры DWG",
+                    "Ищем замкнутые профили, отверстия и открытые линии в выбранных проекциях.",
+                    15);
                 technicalLog.Stage("Contour recognition - strict preview");
                 DrawingToFamilySettings strictSettings = CloneSettingsWithTolerance(settings, 0.1);
                 IList<RecognizedContour> strictContours = RecognizeContours(selectedProjections, strictSettings, result.Warnings);
                 technicalLog.Stage("Contour recognition - strict preview complete");
+                settings.BuildProfileProjection = ProjectionFusionService.ResolveBuildProfileProjection(
+                    strictContours,
+                    settings.PlanRegion,
+                    settings.FrontRegion,
+                    settings.SideRegion,
+                    settings);
+                strictSettings.BuildProfileProjection = settings.BuildProfileProjection;
+                technicalLog.Data("Build profile projection", settings.BuildProfileProjection);
                 if (!ConfirmContourStep(strictContours, strictSettings))
                 {
                     return Result.Cancelled;
                 }
 
-                bool hasOpenPlanCurves = strictContours.Any(x => x.SourceProjection == ProjectionType.Plan && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve));
+                ProjectionType buildProfileProjection = GetBuildProfileProjection(settings);
+                bool hasOpenPlanCurves = strictContours.Any(x => x.SourceProjection == buildProfileProjection && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve));
                 if (hasOpenPlanCurves && settings.ClosureToleranceMm > 0.1)
                 {
                     TaskDialogResult closeChoice = AskAutoCloseOpenContours(strictContours, settings);
@@ -157,7 +188,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     {
                         settings = strictSettings;
                         selectedProjections = GetSelectedProjections(settings);
-                        result.Warnings.Add("User declined automatic closing of open plan lines. Strict 0.1 mm closure tolerance is used.");
+                        result.Warnings.Add("User declined automatic closing of open lines in " + buildProfileProjection + ". Strict 0.1 mm closure tolerance is used.");
                     }
                     else
                     {
@@ -168,6 +199,25 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                 technicalLog.Stage("Contour recognition - final");
                 IList<RecognizedContour> contours = RecognizeContours(selectedProjections, settings, result.Warnings);
                 technicalLog.Stage("Contour recognition - final complete");
+                ApplyManualContourOverrides(contours, settings, result, technicalLog);
+                settings.BuildProfileProjection = ProjectionFusionService.ResolveBuildProfileProjection(
+                    contours,
+                    settings.PlanRegion,
+                    settings.FrontRegion,
+                    settings.SideRegion,
+                    settings);
+                technicalLog.Data("Build profile projection final", settings.BuildProfileProjection);
+                if (!HasProjectionRegion(settings, settings.BuildProfileProjection))
+                {
+                    TaskDialog.Show(ProductInfo.Name, "Для выбранной проекции-основы не выбрана область: " + settings.BuildProfileProjection);
+                    return Result.Cancelled;
+                }
+                SetProgress(
+                    progressWindow,
+                    1,
+                    "Контуры распознаны",
+                    "Найдено контуров: " + contours.Count + ". Готовим контрольные подтверждения.",
+                    26);
                 FillContourStats(result, contours);
                 foreach (RecognizedContour contour in contours)
                 {
@@ -184,6 +234,50 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                         contour.ReasonIfInvalid ?? "-"));
                 }
 
+                SetProgress(
+                    progressWindow,
+                    2,
+                    "Проверяем анализ",
+                    "Показываем габариты и состав найденных форм перед построением.",
+                    30);
+                technicalLog.Stage("DWG diagnostics");
+                var diagnosticService = new DrawingGeometryDiagnosticService();
+                IList<DrawingDiagnosticIssue> diagnosticIssues = diagnosticService.Analyze(entities, selectedProjections, contours, settings);
+                foreach (DrawingDiagnosticIssue issue in diagnosticIssues)
+                {
+                    result.Diagnostics.Add(issue);
+                    string diagnosticText = string.Format(
+                        "{0} {1}: projection={2}; layer={3}; target={4}; value={5:0.###}; tolerance={6:0.###}; message={7}; action={8}",
+                        issue.Severity,
+                        issue.Code,
+                        issue.Projection,
+                        string.IsNullOrWhiteSpace(issue.LayerName) ? "-" : issue.LayerName,
+                        issue.ShortTarget,
+                        issue.ValueMm,
+                        issue.ToleranceMm,
+                        issue.Message,
+                        issue.SuggestedAction);
+                    if (issue.Severity == DrawingDiagnosticSeverity.Error)
+                    {
+                        technicalLog.Error(diagnosticText, null);
+                    }
+                    else if (issue.Severity == DrawingDiagnosticSeverity.Warning)
+                    {
+                        technicalLog.Warning(diagnosticText);
+                    }
+                    else
+                    {
+                        technicalLog.Info(diagnosticText);
+                    }
+                }
+
+                int diagnosticWarnings = diagnosticIssues.Count(x => x.Severity == DrawingDiagnosticSeverity.Warning);
+                int diagnosticErrors = diagnosticIssues.Count(x => x.Severity == DrawingDiagnosticSeverity.Error);
+                if (diagnosticWarnings > 0 || diagnosticErrors > 0)
+                {
+                    result.Warnings.Add("DWG diagnostics found " + diagnosticWarnings + " warning(s) and " + diagnosticErrors + " error(s). See report before trusting generated geometry.");
+                }
+
                 technicalLog.Stage("Show dimension confirmation");
                 if (!ConfirmDimensionStep(settings, result))
                 {
@@ -198,6 +292,12 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                 }
                 technicalLog.Stage("Shape confirmation accepted");
 
+                SetProgress(
+                    progressWindow,
+                    3,
+                    "Собираем кандидатов построения",
+                    "Сопоставляем Plan / Front / Side и выделяем будущие тела, отверстия и reference-линии.",
+                    40);
                 technicalLog.Stage("Projection fusion");
                 var fusion = new ProjectionFusionService();
                 IList<BuildCandidate> candidates = fusion.CreateCandidates(
@@ -283,7 +383,19 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                         technicalLog.Warning("Native feature " + feature.Id + ": " + warning);
                     }
                 }
+                SetProgress(
+                    progressWindow,
+                    3,
+                    "Кандидаты собраны",
+                    "Build-кандидатов: " + candidates.Count + "; native-объектов: " + nativeFeatures.Count + ".",
+                    50);
 
+                SetProgress(
+                    progressWindow,
+                    4,
+                    "Ожидаем подтверждение стека",
+                    "Проверьте список найденных объектов перед созданием линий проекций.",
+                    53);
                 technicalLog.Stage("Show native feature stack");
                 if (!ConfirmNativeFeatureStackStep(nativeFeatures))
                 {
@@ -307,7 +419,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                 {
                     settings.BuildGeometry = true;
                     settings.MaxBuildCandidates = 1;
-                    result.Warnings.Add("User selected staged test build: only the largest Plan contour will be created.");
+                    result.Warnings.Add("User selected staged test build: only the largest " + settings.BuildProfileProjection + " contour will be created.");
                 }
                 else
                 {
@@ -315,16 +427,69 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     settings.MaxBuildCandidates = 0;
                 }
 
-                technicalLog.Stage("Geometry build");
                 var builder = new FamilyGeometryBuilder(new SubcategoryService(), technicalLog);
-                if (nativeFeatures.Count > 0)
+                if (settings.BuildGeometry)
                 {
-                    builder.BuildNativeFeatures(document, nativeFeatures, settings, result);
+                    SetProgress(
+                        progressWindow,
+                        5,
+                        "Строим линии проекций",
+                        "Создаем model/reference lines из распознанных линий DWG. Это может занять несколько минут.",
+                        60);
+                    technicalLog.Stage("Projection reference line build");
+                    builder.BuildReferenceContours(document, contours, settings, result);
+                    SetProgress(
+                        progressWindow,
+                        5,
+                        "Линии проекций построены",
+                        "Создано reference/model lines: " + result.ReferenceLinesCreated + ". Проверьте их в Revit перед 3D.",
+                        72);
+
+                    technicalLog.Stage("Show projection geometry build confirmation");
+                    if (!ConfirmProjectionGeometryBuildStep(contours, candidates, nativeFeatures, settings, result))
+                    {
+                        settings.BuildGeometry = false;
+                        result.Warnings.Add("User stopped after projection reference lines were created. 3D solids were not created.");
+                        technicalLog.Stage("Projection geometry extrusion stopped by user");
+                    }
+                }
+
+                if (settings.BuildGeometry)
+                {
+                    SetProgress(
+                        progressWindow,
+                        6,
+                        "Строим 3D геометрию",
+                        "Пробуем выдавливания по подтвержденным проекциям, затем FreeForm fallback при необходимости.",
+                        78);
+                    technicalLog.Stage("3D geometry build");
+                    IList<NativeGeometryFeature> nativeBuildFeatures = SelectNativeFeaturesForBuild(nativeFeatures, candidates);
+                    bool hasContourBodies = candidates.Any(x => x != null && x.CanBuild);
+                    if (hasContourBodies || nativeBuildFeatures.Count == 0)
+                    {
+                        builder.Build(document, candidates, settings.PlanRegion, settings.FrontRegion, settings.SideRegion, settings, result);
+                    }
+
+                    if (nativeBuildFeatures.Count > 0)
+                    {
+                        builder.BuildNativeFeatures(document, nativeBuildFeatures, settings, result);
+                    }
+                    SetProgress(
+                        progressWindow,
+                        6,
+                        "3D геометрия обработана",
+                        "Создано тел: " + result.CreatedGeometryCount + "; reference/model lines: " + result.ReferenceLinesCreated + ".",
+                        88);
                 }
                 else
                 {
-                    result.Warnings.Add("Native feature stack is empty. Legacy Plan-only builder is used as fallback.");
-                    builder.Build(document, candidates, settings.PlanRegion, settings.FrontRegion, settings.SideRegion, settings, result);
+                    technicalLog.Stage("3D geometry build skipped");
+                    SetProgress(
+                        progressWindow,
+                        6,
+                        "3D построение остановлено",
+                        "Reference/model lines оставлены в модели, выдавливания не выполнялись.",
+                        88);
                 }
                 technicalLog.Info(string.Format(
                     "Build result: solids={0}; references={1}; failed={2}; fallback={3}",
@@ -341,20 +506,75 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     technicalLog.Error(error, null);
                 }
 
+                SetProgress(
+                    progressWindow,
+                    7,
+                    "Формируем отчет",
+                    "Записываем лог, отчет и итоговую статистику построения.",
+                    92);
                 technicalLog.Stage("Report");
                 var reportWriter = new DrawingToFamilyReportWriter();
                 result.ReportPath = reportWriter.Write(uiapp, importInstance, preview, settings, selectedProjections, contours, candidates, result);
                 technicalLog.Info("Report: " + result.ReportPath);
+                SetProgress(
+                    progressWindow,
+                    7,
+                    "Готово",
+                    "Отчет сохранен: " + result.ReportPath,
+                    100);
+                CloseProgressWindow(progressWindow);
+                progressWindow = null;
 
                 TaskDialog.Show(ProductInfo.Name + " - 2D Drawing to Family", BuildSummary(result));
                 return result.Errors.Count > 0 && result.CreatedGeometryCount == 0 && result.ReferenceLinesCreated == 0 ? Result.Failed : Result.Succeeded;
             }
             catch (Exception ex)
             {
+                CloseProgressWindow(progressWindow);
+                progressWindow = null;
                 technicalLog.Error("Unhandled command error.", ex);
                 message = ex.Message;
                 TaskDialog.Show(ProductInfo.Name, "Команда завершилась с ошибкой:\n" + ex.Message + "\n\nЛог:\n" + technicalLog.LogPath);
                 return Result.Failed;
+            }
+            finally
+            {
+                CloseProgressWindow(progressWindow);
+            }
+        }
+
+        private static ProgressWindow CreateProgressWindow(UIApplication uiapp)
+        {
+            var progressWindow = new ProgressWindow();
+            new System.Windows.Interop.WindowInteropHelper(progressWindow).Owner = uiapp.MainWindowHandle;
+            progressWindow.Show();
+            return progressWindow;
+        }
+
+        private static void SetProgress(ProgressWindow progressWindow, int stage, string status, string detail, double percent)
+        {
+            if (progressWindow == null)
+            {
+                return;
+            }
+
+            progressWindow.SetCustom(stage, 8, percent, status, detail);
+        }
+
+        private static void CloseProgressWindow(ProgressWindow progressWindow)
+        {
+            if (progressWindow == null)
+            {
+                return;
+            }
+
+            try
+            {
+                progressWindow.Close();
+            }
+            catch
+            {
+                // Progress UI must never block the Revit command result.
             }
         }
 
@@ -376,6 +596,59 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             }
 
             return contours;
+        }
+
+        private static void ApplyManualContourOverrides(
+            IList<RecognizedContour> contours,
+            DrawingToFamilySettings settings,
+            DrawingToFamilyResult result,
+            DrawingToFamilyLogger technicalLog)
+        {
+            if (contours == null || settings == null || settings.ManualContourOverrides == null || settings.ManualContourOverrides.Count == 0)
+            {
+                return;
+            }
+
+            var overrides = settings.ManualContourOverrides
+                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Signature))
+                .GroupBy(x => x.Signature, StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.Last(), StringComparer.Ordinal);
+
+            foreach (RecognizedContour contour in contours)
+            {
+                string signature = ContourSignatureService.Create(contour);
+                ContourManualOverride manual;
+                if (!overrides.TryGetValue(signature, out manual))
+                {
+                    continue;
+                }
+
+                ContourType before = contour.Type;
+                if (!manual.IsIncluded)
+                {
+                    contour.Type = ContourType.Invalid;
+                    contour.IsValidForRevit = false;
+                    contour.ReasonIfInvalid = "User excluded this contour in visual preview.";
+                    contour.BuildResult = "Excluded in visual preview.";
+                    result.DisabledContourCount++;
+                }
+                else
+                {
+                    contour.Type = manual.OverrideType;
+                    if (contour.Type == ContourType.SolidProfile || contour.Type == ContourType.VoidProfile)
+                    {
+                        contour.IsValidForRevit = true;
+                        contour.ReasonIfInvalid = null;
+                    }
+                }
+
+                result.ManualContourOverrideCount++;
+                result.Warnings.Add("Visual preview override applied to contour " + contour.Id.ToString("N").Substring(0, 8) + ": " + before + " -> " + contour.Type + "; included=" + manual.IsIncluded + ".");
+                if (technicalLog != null)
+                {
+                    technicalLog.Info("Manual contour override: signature=" + signature + "; layer=" + contour.SourceLayer + "; projection=" + contour.SourceProjection + "; " + before + " -> " + contour.Type + "; included=" + manual.IsIncluded);
+                }
+            }
         }
 
         private static DrawingToFamilySettings ShowSettingsAndPickProjectionRegions(
@@ -512,6 +785,8 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                 MinimumElementSizeMm = source.MinimumElementSizeMm,
                 BuildGeometry = source.BuildGeometry,
                 AllowFreeFormFallback = source.AllowFreeFormFallback,
+                SuppressRevitWarnings = source.SuppressRevitWarnings,
+                BuildProfileProjection = source.BuildProfileProjection,
                 MaxBuildCandidates = source.MaxBuildCandidates,
                 PlanRegionId = source.PlanRegionId,
                 FrontRegionId = source.FrontRegionId,
@@ -523,22 +798,28 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             {
                 clone.Layers.Add(layer);
             }
+            clone.ManualContourOverrides.Clear();
+            foreach (ContourManualOverride manual in source.ManualContourOverrides)
+            {
+                clone.ManualContourOverrides.Add(manual);
+            }
 
             return clone;
         }
 
         private static bool ConfirmContourStep(IList<RecognizedContour> contours, DrawingToFamilySettings settings)
         {
-            int planSolid = contours.Count(x => x.SourceProjection == ProjectionType.Plan && x.Type == ContourType.SolidProfile);
-            int planVoid = contours.Count(x => x.SourceProjection == ProjectionType.Plan && x.Type == ContourType.VoidProfile);
-            int planOpen = contours.Count(x => x.SourceProjection == ProjectionType.Plan && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve));
-            int planInvalid = contours.Count(x => x.SourceProjection == ProjectionType.Plan && x.Type == ContourType.Invalid);
+            ProjectionType projection = GetBuildProfileProjection(settings);
+            int planSolid = contours.Count(x => x.SourceProjection == projection && x.Type == ContourType.SolidProfile);
+            int planVoid = contours.Count(x => x.SourceProjection == projection && x.Type == ContourType.VoidProfile);
+            int planOpen = contours.Count(x => x.SourceProjection == projection && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve));
+            int planInvalid = contours.Count(x => x.SourceProjection == projection && x.Type == ContourType.Invalid);
 
             var dialog = new TaskDialog(ProductInfo.Name + " - Step 1")
             {
                 MainInstruction = "1. Замкнутые контуры для построения",
                 MainContent =
-                    "Plan View:\n" +
+                    ProjectionLabel(projection) + ":\n" +
                     "Solid-контуры: " + planSolid + "\n" +
                     "Void/отверстия: " + planVoid + "\n" +
                     "Открытые линии: " + planOpen + "\n" +
@@ -552,10 +833,11 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
 
         private static TaskDialogResult AskAutoCloseOpenContours(IList<RecognizedContour> strictContours, DrawingToFamilySettings settings)
         {
-            int open = strictContours.Count(x => x.SourceProjection == ProjectionType.Plan && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve));
+            ProjectionType projection = GetBuildProfileProjection(settings);
+            int open = strictContours.Count(x => x.SourceProjection == projection && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve));
             var dialog = new TaskDialog(ProductInfo.Name + " - Step 1A")
             {
-                MainInstruction = "Есть разомкнутые линии в Plan View",
+                MainInstruction = "Есть разомкнутые линии в " + ProjectionLabel(projection),
                 MainContent =
                     "Найдено открытых линий: " + open + "\n\n" +
                     "Замкнуть линии автоматически, если разрыв меньше " + settings.ClosureToleranceMm.ToString("0.###") + " мм?\n" +
@@ -581,13 +863,13 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             {
                 MainInstruction = "2. Начало и конец выдавливания",
                 MainContent =
-                    "Строим от вида сверху.\n" +
-                    "Начало выдавливания: Z = 0 мм.\n" +
-                    "Конец выдавливания: Z = высота из Front View.\n\n" +
+                    "Профиль выдавливания: " + ProjectionLabel(GetBuildProfileProjection(settings)) + ".\n" +
+                    "Ось выдавливания: " + BuildDirectionLabel(DirectionForProjection(GetBuildProfileProjection(settings))) + ".\n" +
+                    "Остальные проекции используются для глубины/габаритов и сверки.\n\n" +
                     "Plan View: ширина " + planWidth.ToString("0.#") + " мм, глубина " + planDepth.ToString("0.#") + " мм.\n" +
                     "Front View: ширина " + frontWidth.ToString("0.#") + " мм, высота " + frontHeight.ToString("0.#") + " мм.\n" +
                     "Side View: глубина " + sideDepth.ToString("0.#") + " мм, высота " + sideHeight.ToString("0.#") + " мм.\n\n" +
-                    "Front/Side используются только для размеров и сверки, не как самостоятельные тела.",
+                    "Plan/Front/Side сопоставляются между собой: выбранная проекция дает форму, остальные задают толщину и контрольные размеры.",
                 CommonButtons = TaskDialogCommonButtons.Cancel
             };
             dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Размеры понятны, продолжить");
@@ -624,7 +906,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             var builder = new StringBuilder();
             if (list.Count == 0)
             {
-                builder.AppendLine("Native-объекты не найдены. Будет использован старый безопасный fallback по Plan View.");
+                builder.AppendLine("Native-объекты не найдены. Будет использован fallback по выбранной проекции профиля.");
                 return builder.ToString();
             }
 
@@ -659,14 +941,15 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             }
 
             builder.AppendLine();
-            builder.AppendLine("Построение будет выполнено нативными Revit-профилями: прямоугольные выдавливания и цилиндры по X/Y/Z в зависимости от проекции, где найден круг. Остальные проекции используются как источники размеров, Plan View остается диктующим.");
+            builder.AppendLine("Построение будет выполнено нативными Revit-профилями: выбранная проекция задает форму, остальные проекции задают глубину/габариты и сверку.");
             return builder.ToString();
         }
 
         private static string BuildShapeSummary(IList<RecognizedContour> contours, DrawingToFamilySettings settings)
         {
+            ProjectionType projection = GetBuildProfileProjection(settings);
             IList<RecognizedContour> plan = contours
-                .Where(x => x.SourceProjection == ProjectionType.Plan)
+                .Where(x => x.SourceProjection == projection)
                 .ToList();
             int solids = plan.Count(x => x.Type == ContourType.SolidProfile);
             int holes = plan.Count(x => x.Type == ContourType.VoidProfile);
@@ -676,7 +959,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             int open = plan.Count(x => x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve);
 
             var builder = new StringBuilder();
-            builder.AppendLine("Plan View является источником построения.");
+            builder.AppendLine(ProjectionLabel(projection) + " является источником формы выдавливания.");
             builder.AppendLine();
             builder.AppendLine("Solid-контуры: " + solids);
             builder.AppendLine("Отверстия/внутренние контуры: " + holes);
@@ -685,8 +968,83 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             builder.AppendLine("Круги/почти круги: " + circles);
             builder.AppendLine("Открытые линии: " + open);
             builder.AppendLine();
-            builder.AppendLine("Дальше плагин собирает native feature stack: основной footprint из Plan View, высоты/глубины из Front/Side и круговые признаки из той проекции, где они читаются надежнее.");
+            builder.AppendLine("Дальше плагин собирает build stack: форму берет из выбранной проекции, глубину/габариты соотносит с остальными видами.");
             return builder.ToString();
+        }
+
+        private static ProjectionType GetBuildProfileProjection(DrawingToFamilySettings settings)
+        {
+            if (settings == null || settings.BuildProfileProjection == ProjectionType.Unknown)
+            {
+                return ProjectionType.Plan;
+            }
+
+            return settings.BuildProfileProjection;
+        }
+
+        private static BuildDirection DirectionForProjection(ProjectionType projection)
+        {
+            if (projection == ProjectionType.Front)
+            {
+                return BuildDirection.ExtrudeY_FromFront;
+            }
+
+            if (projection == ProjectionType.Side)
+            {
+                return BuildDirection.ExtrudeX_FromSide;
+            }
+
+            return BuildDirection.ExtrudeZ_FromPlan;
+        }
+
+        private static bool HasProjectionRegion(DrawingToFamilySettings settings, ProjectionType projection)
+        {
+            if (settings == null)
+            {
+                return false;
+            }
+
+            if (projection == ProjectionType.Front)
+            {
+                return settings.FrontRegion != null && settings.FrontRegion.IsValid && settings.FrontRegion.EntityCount > 0;
+            }
+
+            if (projection == ProjectionType.Side)
+            {
+                return settings.SideRegion != null && settings.SideRegion.IsValid && settings.SideRegion.EntityCount > 0;
+            }
+
+            return settings.PlanRegion != null && settings.PlanRegion.IsValid && settings.PlanRegion.EntityCount > 0;
+        }
+
+        private static string ProjectionLabel(ProjectionType projection)
+        {
+            if (projection == ProjectionType.Front)
+            {
+                return "Front View / вид спереди";
+            }
+
+            if (projection == ProjectionType.Side)
+            {
+                return "Side View / вид сбоку-слева";
+            }
+
+            return "Plan View / вид сверху";
+        }
+
+        private static string BuildDirectionLabel(BuildDirection direction)
+        {
+            if (direction == BuildDirection.ExtrudeY_FromFront)
+            {
+                return "Y из Front View";
+            }
+
+            if (direction == BuildDirection.ExtrudeX_FromSide)
+            {
+                return "X из Side View";
+            }
+
+            return "Z из Plan View";
         }
 
         private static StagedBuildDecision AskFinalBuildDecision(IList<BuildCandidate> candidates, IList<NativeGeometryFeature> features, DrawingToFamilySettings settings)
@@ -699,7 +1057,8 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                     || x.FeatureType == NativeFeatureType.Box
                     || x.FeatureType == NativeFeatureType.SurfaceDetail
                     || x.FeatureType == NativeFeatureType.IsoDetail));
-            int cylinders = (features ?? new List<NativeGeometryFeature>()).Count(x => x != null && x.FeatureType == NativeFeatureType.Cylinder);
+            int cylinders = (features ?? new List<NativeGeometryFeature>()).Count(x => x != null
+                && (x.FeatureType == NativeFeatureType.Cylinder || x.FeatureType == NativeFeatureType.VoidCylinder));
             int isoDetails = (features ?? new List<NativeGeometryFeature>()).Count(x => x != null && x.FeatureType == NativeFeatureType.IsoDetail);
             double largestArea = candidates
                 .Where(x => x != null && x.PrimaryContour != null)
@@ -713,10 +1072,11 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
                 MainContent =
                     "Build-кандидатов контуров: " + buildable + "\n" +
                     "Native-объектов: " + nativeBuildable + " (boxes: " + boxes + ", cylinders: " + cylinders + ", ISO-details: " + isoDetails + ")\n" +
-                    "Основной плановый footprint/контур: " + largestArea.ToString("0.#") + " мм2\n\n" +
+                    "Базовая проекция профиля: " + ProjectionLabel(GetBuildProfileProjection(settings)) + "\n" +
+                    "Основной базовый контур: " + largestArea.ToString("0.#") + " мм2\n\n" +
                     "Порядок: от больших тел к меньшим.\n" +
-                    "Метод: native feature stack. Plan задает footprint; Front/Side задают высоты, глубины и признаки формы. Опциональный 3D/ISO вид добавляет только приблизительные detail-boxes, не меняя основной габарит.\n" +
-                    "Если Revit вернет управляемую ошибку, будет попытка bbox FreeForm fallback.\n\n" +
+                    "Метод: строим все валидные контуры выбранной проекции поэтапно. Для каждого: точный Extrusion, затем точный FreeForm fallback, затем безопасный bbox FreeForm. Остальные виды задают глубину, габариты, отверстия и проверку. Открытые/сомнительные контуры строятся как reference/model lines.\n" +
+                    "Если Revit вернет управляемую ошибку, транзакция будет откатана перед следующей попыткой.\n\n" +
                     "Если Revit снова падает фатально, выберите на следующем тесте 'только 1 самое крупное тело' - так мы изолируем точку падения.",
                 CommonButtons = TaskDialogCommonButtons.Cancel
             };
@@ -738,6 +1098,79 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             }
 
             return StagedBuildDecision.Cancel;
+        }
+
+        private static bool ConfirmProjectionGeometryBuildStep(
+            IList<RecognizedContour> contours,
+            IList<BuildCandidate> candidates,
+            IList<NativeGeometryFeature> features,
+            DrawingToFamilySettings settings,
+            DrawingToFamilyResult buildResult)
+        {
+            IList<RecognizedContour> contourList = contours ?? new List<RecognizedContour>();
+            IList<BuildCandidate> candidateList = candidates ?? new List<BuildCandidate>();
+            IList<NativeGeometryFeature> featureList = features ?? new List<NativeGeometryFeature>();
+
+            int buildableBodies = candidateList.Count(x => x != null && x.CanBuild);
+            int nativeBuildable = featureList.Count(x => x != null && x.CanBuild);
+            int openOrReference = contourList.Count(x => x != null
+                && (x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve || x.Type == ContourType.Invalid));
+            int projectionContours = contourList.Count(x => x != null && x.SourceProjection != ProjectionType.Plan);
+            int referenceLines = buildResult == null ? 0 : buildResult.ReferenceLinesCreated;
+            string mode = settings != null && settings.MaxBuildCandidates == 1
+                ? "test mode: 1 largest body"
+                : "full mode: all confirmed projection geometry";
+
+            var dialog = new TaskDialog(ProductInfo.Name + " - Step 4A")
+            {
+                MainInstruction = "Построить геометрию по проекциям?",
+                MainContent =
+                    "Линии проекций уже построены в Revit. Теперь можно проверить их визуально и решить, запускать ли 3D-построение.\n\n" +
+                    "Режим: " + mode + "\n" +
+                    "Создано reference/model lines: " + referenceLines + "\n" +
+                    "Build-кандидатов тел: " + buildableBodies + "\n" +
+                    "Native-объектов: " + nativeBuildable + "\n" +
+                    "Контуров/линий проекций в анализе: " + (openOrReference + projectionContours) + "\n\n" +
+                    "Если продолжить, плагин начнет выдавливать 3D-геометрию по подтвержденным проекциям.\n" +
+                    "Если остановить, линии останутся в модели, а 3D-тела создаваться не будут. Отчет и лог будут сохранены.",
+                CommonButtons = TaskDialogCommonButtons.None
+            };
+            dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Построить геометрию по проекциям");
+            dialog.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Остановить построение");
+            return dialog.Show() == TaskDialogResult.CommandLink1;
+        }
+
+        private static IList<NativeGeometryFeature> SelectNativeFeaturesForBuild(
+            IList<NativeGeometryFeature> features,
+            IList<BuildCandidate> candidates)
+        {
+            var result = new List<NativeGeometryFeature>();
+            IList<NativeGeometryFeature> source = features ?? new List<NativeGeometryFeature>();
+            bool contourBodiesWillBuild = (candidates ?? new List<BuildCandidate>()).Any(x => x != null && x.CanBuild);
+            foreach (NativeGeometryFeature feature in source)
+            {
+                if (feature == null)
+                {
+                    continue;
+                }
+
+                if (!contourBodiesWillBuild)
+                {
+                    result.Add(feature);
+                    continue;
+                }
+
+                if (feature.FeatureType == NativeFeatureType.SurfaceDetail
+                    || feature.FeatureType == NativeFeatureType.IsoDetail
+                    || feature.FeatureType == NativeFeatureType.Cylinder
+                    || feature.FeatureType == NativeFeatureType.VoidCylinder
+                    || feature.FeatureType == NativeFeatureType.ReferenceOnly)
+                {
+                    result.Add(feature);
+                }
+            }
+
+            return result;
         }
 
         private static bool IsRectangleLike(RecognizedContour contour)
@@ -921,6 +1354,8 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Commands
             builder.AppendLine("Solid / void / open: " + result.SolidContours + " / " + result.VoidContours + " / " + result.OpenContours);
             builder.AppendLine("Build candidates: " + result.BuildCandidateCount);
             builder.AppendLine("Native features: " + result.NativeFeatureCount + " (boxes " + result.BoxFeatureCount + ", cylinders/openings " + result.CylinderFeatureCount + ")");
+            builder.AppendLine("Diagnostics: " + result.Diagnostics.Count + " (warnings " + result.Diagnostics.Count(x => x.Severity == DrawingDiagnosticSeverity.Warning) + ", errors " + result.Diagnostics.Count(x => x.Severity == DrawingDiagnosticSeverity.Error) + ")");
+            builder.AppendLine("Preview manual overrides: " + result.ManualContourOverrideCount + "; disabled contours: " + result.DisabledContourCount);
             builder.AppendLine("Solid extrusions: " + result.SolidExtrusionsCreated);
             builder.AppendLine("FreeForms: " + result.FreeFormElementsCreated);
             builder.AppendLine("Reference lines: " + result.ReferenceLinesCreated);

@@ -22,30 +22,241 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             var planSolids = SolidContours(all, ProjectionType.Plan);
             var frontSolids = SolidContours(all, ProjectionType.Front);
             var sideSolids = SolidContours(all, ProjectionType.Side);
-
-            IList<RecognizedContour> dominantPlanSolids = SelectDictatingPlanSolids(planSolids, plan, settings, all, warnings);
-            foreach (RecognizedContour contour in dominantPlanSolids)
+            ProjectionType buildProjection = ResolveBuildProfileProjection(all, plan, front, side, settings);
+            if (settings != null)
             {
-                BuildCandidate candidate = CreatePlanCandidate(contour, all, frontSolids, sideSolids, front, side, settings, warnings);
+                settings.BuildProfileProjection = buildProjection;
+            }
+
+            IList<RecognizedContour> buildSolids = SelectBuildableSolids(
+                SolidContoursForProjection(buildProjection, planSolids, frontSolids, sideSolids),
+                RegionForProjection(buildProjection, plan, front, side),
+                buildProjection,
+                settings,
+                all,
+                warnings);
+
+            foreach (RecognizedContour contour in buildSolids)
+            {
+                BuildCandidate candidate;
+                if (buildProjection == ProjectionType.Front)
+                {
+                    candidate = CreateFrontCandidate(contour, all, planSolids, sideSolids, plan, side, settings, warnings);
+                }
+                else if (buildProjection == ProjectionType.Side)
+                {
+                    candidate = CreateSideCandidate(contour, all, planSolids, frontSolids, plan, front, settings, warnings);
+                }
+                else
+                {
+                    candidate = CreatePlanCandidate(contour, all, frontSolids, sideSolids, front, side, settings, warnings);
+                }
+
                 result.Add(candidate);
             }
 
             if (warnings != null)
             {
-                int frontOnly = frontSolids.Count(x => !IsRepresentedBy(x, dominantPlanSolids, settings));
-                int sideOnly = sideSolids.Count(x => !IsRepresentedBy(x, dominantPlanSolids, settings));
+                warnings.Add("Build profile projection: " + buildProjection + ". Shape contours are taken from this projection; other projections are used for extrusion depth and size checks.");
+                int planOnly = buildProjection == ProjectionType.Plan ? 0 : planSolids.Count(x => !IsRepresentedBy(x, buildSolids, settings));
+                int frontOnly = buildProjection == ProjectionType.Front ? 0 : frontSolids.Count(x => !IsRepresentedBy(x, buildSolids, settings));
+                int sideOnly = buildProjection == ProjectionType.Side ? 0 : sideSolids.Count(x => !IsRepresentedBy(x, buildSolids, settings));
                 int open = all.Count(x => x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve);
+                if (planOnly > 0)
+                {
+                    warnings.Add("Plan View contains " + planOnly + " solid contour(s) that are used only for measuring/comparison. Geometry profile is built from " + buildProjection + ".");
+                }
                 if (frontOnly > 0)
                 {
-                    warnings.Add("Front View contains " + frontOnly + " solid contour(s) that are used only for measuring/comparison. Geometry is built from Plan View only.");
+                    warnings.Add("Front View contains " + frontOnly + " solid contour(s) that are used only for measuring/comparison. Geometry profile is built from " + buildProjection + ".");
                 }
                 if (sideOnly > 0)
                 {
-                    warnings.Add("Side View contains " + sideOnly + " solid contour(s) that are used only for measuring/comparison. Geometry is built from Plan View only.");
+                    warnings.Add("Side View contains " + sideOnly + " solid contour(s) that are used only for measuring/comparison. Geometry profile is built from " + buildProjection + ".");
                 }
                 if (open > 0)
                 {
-                    warnings.Add(open + " open/reference contour(s) were recorded in the report but not sent to Revit model creation in crash-safe Plan-only mode.");
+                    warnings.Add(open + " open/reference contour(s) will be sent to Revit as model/reference lines before 3D build confirmation.");
+                }
+            }
+
+            return result;
+        }
+
+        public static ProjectionType ResolveBuildProfileProjection(
+            IList<RecognizedContour> contours,
+            DrawingProjectionRegion plan,
+            DrawingProjectionRegion front,
+            DrawingProjectionRegion side,
+            DrawingToFamilySettings settings)
+        {
+            ProjectionType requested = settings == null ? ProjectionType.Unknown : settings.BuildProfileProjection;
+            if (requested == ProjectionType.Plan || requested == ProjectionType.Front || requested == ProjectionType.Side)
+            {
+                return requested;
+            }
+
+            var all = contours ?? new List<RecognizedContour>();
+            var scores = new Dictionary<ProjectionType, double>
+            {
+                { ProjectionType.Plan, ProjectionScore(all, ProjectionType.Plan, plan) },
+                { ProjectionType.Front, ProjectionScore(all, ProjectionType.Front, front) },
+                { ProjectionType.Side, ProjectionScore(all, ProjectionType.Side, side) }
+            };
+
+            ProjectionType best = scores
+                .Where(x => HasRegionForProjection(x.Key, plan, front, side))
+                .OrderByDescending(x => x.Value)
+                .ThenBy(x => x.Key == ProjectionType.Side ? 0 : x.Key == ProjectionType.Front ? 1 : 2)
+                .Select(x => x.Key)
+                .FirstOrDefault();
+
+            return best == ProjectionType.Unknown ? ProjectionType.Plan : best;
+        }
+
+        private static double ProjectionScore(IList<RecognizedContour> contours, ProjectionType projection, DrawingProjectionRegion region)
+        {
+            if (!HasRegion(region))
+            {
+                return -1;
+            }
+
+            IList<RecognizedContour> projectionContours = (contours ?? new List<RecognizedContour>())
+                .Where(x => x != null && x.SourceProjection == projection)
+                .ToList();
+            int solids = projectionContours.Count(x => x.Type == ContourType.SolidProfile && x.IsValidForRevit);
+            int voids = projectionContours.Count(x => x.Type == ContourType.VoidProfile && x.IsValidForRevit);
+            int open = projectionContours.Count(x => x.Type == ContourType.OpenCurve || x.Type == ContourType.ReferenceCurve);
+            double largestArea = projectionContours
+                .Where(x => x.Type == ContourType.SolidProfile)
+                .Select(x => x.AreaMm2)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return solids * 1000.0
+                + voids * 120.0
+                + open * 2.0
+                + Math.Min(region.EntityCount, 5000) * 0.5
+                + Math.Min(largestArea / 1000.0, 2000.0);
+        }
+
+        private static bool HasRegionForProjection(
+            ProjectionType projection,
+            DrawingProjectionRegion plan,
+            DrawingProjectionRegion front,
+            DrawingProjectionRegion side)
+        {
+            return HasRegion(RegionForProjection(projection, plan, front, side));
+        }
+
+        private static bool HasRegion(DrawingProjectionRegion region)
+        {
+            return region != null && region.IsValid && region.EntityCount > 0;
+        }
+
+        private static DrawingProjectionRegion RegionForProjection(
+            ProjectionType projection,
+            DrawingProjectionRegion plan,
+            DrawingProjectionRegion front,
+            DrawingProjectionRegion side)
+        {
+            if (projection == ProjectionType.Front)
+            {
+                return front;
+            }
+
+            if (projection == ProjectionType.Side)
+            {
+                return side;
+            }
+
+            return plan;
+        }
+
+        private static IList<RecognizedContour> SolidContoursForProjection(
+            ProjectionType projection,
+            IList<RecognizedContour> planSolids,
+            IList<RecognizedContour> frontSolids,
+            IList<RecognizedContour> sideSolids)
+        {
+            if (projection == ProjectionType.Front)
+            {
+                return frontSolids ?? new List<RecognizedContour>();
+            }
+
+            if (projection == ProjectionType.Side)
+            {
+                return sideSolids ?? new List<RecognizedContour>();
+            }
+
+            return planSolids ?? new List<RecognizedContour>();
+        }
+
+        private static IList<RecognizedContour> SelectBuildableSolids(
+            IList<RecognizedContour> solids,
+            DrawingProjectionRegion region,
+            ProjectionType projection,
+            DrawingToFamilySettings settings,
+            IList<RecognizedContour> allContours,
+            IList<string> warnings)
+        {
+            if (solids != null && solids.Count > 0)
+            {
+                if (warnings != null && solids.Count > 1)
+                {
+                    warnings.Add(projection + " contains " + solids.Count + " solid contour(s). All valid solid contours from this projection will be attempted from larger to smaller.");
+                }
+
+                return solids
+                    .Where(x => x != null && x.Type == ContourType.SolidProfile && x.IsValidForRevit)
+                    .OrderByDescending(x => x.AreaMm2)
+                    .ToList();
+            }
+
+            var result = new List<RecognizedContour>();
+            RecognizedContour envelope = CreateProjectionEnvelopeContour(region, projection, settings, warnings);
+            if (envelope != null)
+            {
+                AddSyntheticContour(allContours, envelope);
+                result.Add(envelope);
+                if (warnings != null)
+                {
+                    warnings.Add(projection + ": замкнутые контуры не найдены, поэтому fallback profile построен по габариту всех основных линий внутри выбранной области.");
+                }
+            }
+
+            return result;
+        }
+
+        private static IList<RecognizedContour> SelectBuildablePlanSolids(
+            IList<RecognizedContour> planSolids,
+            DrawingProjectionRegion plan,
+            DrawingToFamilySettings settings,
+            IList<RecognizedContour> allContours,
+            IList<string> warnings)
+        {
+            if (planSolids != null && planSolids.Count > 0)
+            {
+                if (warnings != null && planSolids.Count > 1)
+                {
+                    warnings.Add("Plan View contains " + planSolids.Count + " solid contour(s). All valid Plan solid contours will be attempted from larger to smaller.");
+                }
+
+                return planSolids
+                    .Where(x => x != null && x.Type == ContourType.SolidProfile && x.IsValidForRevit)
+                    .OrderByDescending(x => x.AreaMm2)
+                    .ToList();
+            }
+
+            var result = new List<RecognizedContour>();
+            RecognizedContour envelope = CreatePlanEnvelopeContour(plan, settings, warnings);
+            if (envelope != null)
+            {
+                AddSyntheticContour(allContours, envelope);
+                result.Add(envelope);
+                if (warnings != null)
+                {
+                    warnings.Add("Plan View: замкнутые контуры не найдены, поэтому fallback footprint построен по габариту всех основных линий внутри выбранной области.");
                 }
             }
 
@@ -389,6 +600,73 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Services
             }
 
             return contour;
+        }
+
+        private static RecognizedContour CreateProjectionEnvelopeContour(
+            DrawingProjectionRegion region,
+            ProjectionType projection,
+            DrawingToFamilySettings settings,
+            IList<string> warnings)
+        {
+            if (projection == ProjectionType.Plan)
+            {
+                return CreatePlanEnvelopeContour(region, settings, warnings);
+            }
+
+            ProjectionExtents extents = CalculateMainGeometryExtents(region, settings);
+            double minimumElementSizeMm = settings == null ? 10.0 : settings.MinimumElementSizeMm;
+            if (!extents.IsValid
+                || extents.WidthMm < minimumElementSizeMm
+                || extents.HeightMm < minimumElementSizeMm)
+            {
+                return null;
+            }
+
+            XYZ a = PointOnProjection(projection, extents.MinU, extents.MinV);
+            XYZ b = PointOnProjection(projection, extents.MaxU, extents.MinV);
+            XYZ c = PointOnProjection(projection, extents.MaxU, extents.MaxV);
+            XYZ d = PointOnProjection(projection, extents.MinU, extents.MaxV);
+
+            var contour = new RecognizedContour
+            {
+                SourceProjection = projection,
+                SourceLayer = projection + " footprint",
+                Type = ContourType.SolidProfile,
+                NestingLevel = 0,
+                BoundingBox = new BoundingBoxXYZ { Min = a, Max = c },
+                WidthMm = extents.WidthMm,
+                HeightMm = extents.HeightMm,
+                AreaMm2 = extents.WidthMm * extents.HeightMm,
+                IsClosed = true,
+                IsValidForRevit = true,
+                BuildResult = "Synthetic dictating " + projection + " profile from all main entities."
+            };
+
+            contour.Curves.Add(Line.CreateBound(a, b));
+            contour.Curves.Add(Line.CreateBound(b, c));
+            contour.Curves.Add(Line.CreateBound(c, d));
+            contour.Curves.Add(Line.CreateBound(d, a));
+            foreach (DwgCurveEntity entity in extents.SourceEntities)
+            {
+                contour.SourceEntities.Add(entity);
+            }
+
+            return contour;
+        }
+
+        private static XYZ PointOnProjection(ProjectionType projection, double u, double v)
+        {
+            if (projection == ProjectionType.Front)
+            {
+                return new XYZ(u, 0, v);
+            }
+
+            if (projection == ProjectionType.Side)
+            {
+                return new XYZ(0, u, v);
+            }
+
+            return new XYZ(u, v, 0);
         }
 
         private static bool ShouldUseAxisExtents(ProjectionExtents axisExtents, ProjectionExtents allExtents)

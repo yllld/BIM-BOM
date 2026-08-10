@@ -10,6 +10,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Models
             Errors = new List<string>();
             CreatedElementIds = new List<int>();
             NativeFeatures = new List<NativeGeometryFeature>();
+            Diagnostics = new List<DrawingDiagnosticIssue>();
         }
 
         public int ReadObjectCount { get; set; }
@@ -32,6 +33,8 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Models
         public int SkippedContours { get; set; }
         public int BuildCandidateCount { get; set; }
         public int NativeFeatureCount { get; set; }
+        public int ManualContourOverrideCount { get; set; }
+        public int DisabledContourCount { get; set; }
         public int BoxFeatureCount { get; set; }
         public int CylinderFeatureCount { get; set; }
         public int CreatedGeometryCount { get; set; }
@@ -50,6 +53,7 @@ namespace FamilyConverter.Revit2021.DrawingToFamily.Models
         public IList<string> Errors { get; private set; }
         public IList<int> CreatedElementIds { get; private set; }
         public IList<NativeGeometryFeature> NativeFeatures { get; private set; }
+        public IList<DrawingDiagnosticIssue> Diagnostics { get; private set; }
 
         public string Status
         {
