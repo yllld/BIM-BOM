@@ -14,6 +14,7 @@ namespace FamilyConverter.Revit2021.Services
         private readonly GeometryAnalysisService _analysisService;
         private readonly ExtrusionCreationService _extrusionService;
         private readonly FreeFormCreationService _freeFormService;
+        private readonly MeshDirectShapeCreationService _meshDirectShapeService;
         private readonly ReportService _reportService;
         private readonly AiConfigService _aiConfigService;
         private readonly LoggingService _logger;
@@ -31,6 +32,7 @@ namespace FamilyConverter.Revit2021.Services
             _analysisService = analysisService;
             _extrusionService = extrusionService;
             _freeFormService = freeFormService;
+            _meshDirectShapeService = new MeshDirectShapeCreationService(_freeFormService);
             _reportService = reportService;
             _aiConfigService = aiConfigService;
             _logger = logger;
@@ -43,7 +45,7 @@ namespace FamilyConverter.Revit2021.Services
 
             if (geometryObjects == null || geometryObjects.Count == 0)
             {
-                summary.Messages.Add("Геометрия DWG не содержит пригодных Solid-объектов.");
+                summary.Messages.Add("Геометрия DWG не содержит пригодных Solid или Mesh-объектов.");
             }
 
             AiConfig aiConfig = null;
@@ -87,10 +89,17 @@ namespace FamilyConverter.Revit2021.Services
                         }
                         else if (info.Mesh != null)
                         {
-                            result.LocalClassification = GeometryClassification.MeshUnsupported;
-                            result.FinalMethod = ConversionMethod.Skip;
-                            result.Status = ConversionStatus.Skipped;
-                            result.Message = "Mesh-геометрия в MVP не преобразуется и будет отражена в отчете.";
+                            if (options.SuperTurboMode)
+                            {
+                                result.LocalClassification = GeometryClassification.MeshUnsupported;
+                                result.FinalMethod = ConversionMethod.Skip;
+                                result.Status = ConversionStatus.Skipped;
+                                result.Message = "Mesh-геометрия не обрабатывается в Turbo FreeForm.";
+                            }
+                            else
+                            {
+                                ProcessMesh(document, info, options, result);
+                            }
                         }
                         else if (info.Curve != null)
                         {
@@ -224,6 +233,114 @@ namespace FamilyConverter.Revit2021.Services
             result.FinalMethod = ConversionMethod.Skip;
             result.Status = ConversionStatus.Skipped;
             result.Message = "Solid пропущен: профиль не признан безопасным, FreeForm fallback выключен или рекомендация требует Skip.";
+        }
+
+        private void ProcessMesh(
+            Document document,
+            GeometryObjectInfo info,
+            ConversionOptions options,
+            ConversionResult result)
+        {
+            result.LocalClassification = GeometryClassification.Mesh;
+            result.LocalConfidence = 1.0;
+
+            MeshDirectShapeCreationResult meshResult = null;
+            Element element = CreateInTransaction(document, ProductInfo.Name + ": Mesh FreeForm / DirectShape", () =>
+            {
+                meshResult = _meshDirectShapeService.Create(document, info, options);
+                return meshResult.Element;
+            });
+
+            result.MeshSourceTriangleCount = meshResult.SourceTriangleCount;
+            result.MeshCreatedTriangleCount = meshResult.CreatedTriangleCount;
+            result.MeshSkippedTriangleCount = meshResult.SkippedTriangleCount;
+            result.MeshSourceVertexCount = meshResult.SourceVertexCount;
+            result.MeshSourceNormalCount = meshResult.SourceNormalCount;
+            result.MeshOutputNormalCount = meshResult.OutputNormalCount;
+            result.MeshSourceNormalDistribution = meshResult.SourceNormalDistribution;
+            result.MeshOutputNormalDistribution = meshResult.OutputNormalDistribution;
+            result.MeshCreationPath = meshResult.CreationPath;
+            result.MeshFallbackReason = meshResult.FallbackReason;
+            result.MeshFreeFormFailureReason = meshResult.FreeFormFailureReason;
+            result.MeshDirectMeshFailureReason = meshResult.DirectMeshFailureReason;
+            result.MeshSolidFaceCount = meshResult.SolidFaceCount;
+            result.MeshFreeFormPlanarFaceCount = meshResult.FreeFormPlanarFaceCount;
+            result.MeshFreeFormReferenceFaceCount = meshResult.FreeFormReferenceFaceCount;
+            result.MeshBoundaryEdgeCount = meshResult.BoundaryEdgeCount;
+            result.MeshBoundaryLoopCount = meshResult.BoundaryLoopCount;
+            result.MeshNonManifoldEdgeCount = meshResult.NonManifoldEdgeCount;
+            result.MeshOrientationFlipCount = meshResult.OrientationFlipCount;
+            result.MeshOrientationConflictCount = meshResult.OrientationConflictCount;
+            result.MeshPlanarCapCount = meshResult.PlanarCapCount;
+            result.MeshNonPlanarBoundaryLoopCount = meshResult.NonPlanarBoundaryLoopCount;
+            result.MeshOpenBoundaryChainCount = meshResult.OpenBoundaryChainCount;
+            result.MeshTopologyRepairApplied = meshResult.TopologyRepairApplied;
+            result.MeshTopologyRepairFailureReason = meshResult.TopologyRepairFailureReason;
+
+            string successMessage;
+            if (meshResult.CreationPath == "FreeFormFromRepairedMesh")
+            {
+                successMessage = "Создан FreeFormElement после ремонта Mesh: закрыто плоских граничных контуров "
+                    + meshResult.PlanarCapCount
+                    + ", исправлено направлений треугольников "
+                    + meshResult.OrientationFlipCount
+                    + ", доступных планарных граней для коннектора "
+                    + meshResult.FreeFormReferenceFaceCount
+                    + ".";
+            }
+            else if (meshResult.CreationPath == "FreeFormFromClosedMesh")
+            {
+                successMessage = "Создан FreeFormElement из замкнутого Mesh: граней Solid "
+                    + meshResult.SolidFaceCount
+                    + ", планарных граней для коннектора "
+                    + meshResult.FreeFormReferenceFaceCount
+                    + ".";
+            }
+            else if (meshResult.CreationPath == "DirectMeshFallback")
+            {
+                successMessage = "Создан DirectShape прямым переносом Mesh после неудачи FreeForm: треугольников "
+                    + meshResult.CreatedTriangleCount
+                    + ", нормалей "
+                    + meshResult.OutputNormalCount
+                    + ".";
+            }
+            else
+            {
+                successMessage = "Создан DirectShape через tessellation fallback: треугольников "
+                    + meshResult.CreatedTriangleCount
+                    + " из "
+                    + meshResult.SourceTriangleCount
+                    + ".";
+            }
+
+            CompleteCreatedResult(
+                document,
+                info,
+                element,
+                options,
+                result,
+                meshResult.Method,
+                successMessage);
+
+            if (meshResult.SkippedTriangleCount > 0)
+            {
+                result.Status = ConversionStatus.Warning;
+                result.Warnings.Add(
+                    "Пропущено недопустимых или вырожденных треугольников Mesh: "
+                    + meshResult.SkippedTriangleCount
+                    + ".");
+            }
+
+            if (!string.IsNullOrWhiteSpace(meshResult.FallbackReason))
+            {
+                result.Status = ConversionStatus.Warning;
+                result.FallbackUsed = true;
+                result.Warnings.Add(
+                    "Основной путь Mesh→FreeForm не сработал, использован "
+                    + meshResult.CreationPath
+                    + ": "
+                    + meshResult.FallbackReason);
+            }
         }
 
         private void ProcessSolidSuperTurbo(Document document, GeometryObjectInfo info, ConversionOptions options, ConversionResult result)

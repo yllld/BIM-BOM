@@ -19,6 +19,7 @@ namespace FamilyConverter.Revit2021.Models
 
         public int ExtrusionCount { get { return Results.Count(x => x.FinalMethod == ConversionMethod.Extrusion && x.CreatedElementId != null); } }
         public int FreeFormCount { get { return Results.Count(x => x.FinalMethod == ConversionMethod.FreeForm && x.CreatedElementId != null); } }
+        public int DirectShapeCount { get { return Results.Count(x => x.FinalMethod == ConversionMethod.DirectShape && x.CreatedElementId != null); } }
         public int SkippedCount { get { return Results.Count(x => x.Status == ConversionStatus.Skipped); } }
         public int FailedCount { get { return Results.Count(x => x.Status == ConversionStatus.Failed); } }
         public int WarningCount { get { return Results.Count(x => x.Status == ConversionStatus.Warning) + Results.Sum(x => x.Warnings.Count); } }

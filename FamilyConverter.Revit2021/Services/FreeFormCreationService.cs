@@ -24,7 +24,26 @@ namespace FamilyConverter.Revit2021.Services
                 throw new System.InvalidOperationException("Solid для FreeFormElement не найден.");
             }
 
-            FreeFormElement element = FreeFormElement.Create(document, source.Solid);
+            return Create(document, source.Solid, source, options);
+        }
+
+        public Element Create(
+            Document document,
+            Solid solid,
+            GeometryObjectInfo source,
+            ConversionOptions options)
+        {
+            if (document == null || !document.IsFamilyDocument)
+            {
+                throw new System.InvalidOperationException("FreeFormElement можно создавать только внутри документа семейства.");
+            }
+
+            if (solid == null || solid.Faces.Size == 0)
+            {
+                throw new System.InvalidOperationException("Solid для FreeFormElement не найден или не содержит граней.");
+            }
+
+            FreeFormElement element = FreeFormElement.Create(document, solid);
             Category subcategory = _subcategoryService.GetOrCreate(document, source.LayerName, options.CreateSubcategoriesByLayer);
             _subcategoryService.AssignSubcategory(element, subcategory);
             return element;
